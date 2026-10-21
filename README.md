@@ -14,7 +14,7 @@ AI prototype for a cross-border ecommerce MVP focused on:
 - First platforms: Amazon and TikTok Shop
 - First target market: United States
 - Input priority: link parsing first, manual pasted facts as fallback
-- Export format: real Word `.docx`
+- Export format: Word-readable `.rtf`
 - Account model: single-user version first
 
 ## Product Flow
@@ -27,7 +27,7 @@ AI prototype for a cross-border ecommerce MVP focused on:
 6. Generate TikTok Shop ad scripts.
 7. Review the skill-assisted opportunity brief.
 8. Edit output manually.
-9. Export a Word `.docx` file.
+9. Export a Word-readable `.rtf` file.
 
 ## Local Development
 
@@ -61,17 +61,17 @@ The prototype now models these uploaded skill capabilities as product modules:
 
 These modules are currently simulated in the browser. They define the UX, fields, and output contract before real API credentials and backend pipelines are connected.
 
-## DOCX Export
+## Word Export
 
-Click `Export DOCX` to save the current output tab. In Chrome on localhost, the app uses the system save dialog first so the user can choose the exact save location. If the browser does not support that API, it falls back to a normal browser download.
+Click `Export Word` to save the current output tab as `.rtf`. RTF opens directly in Microsoft Word, WPS, Pages, and most office apps.
 
-After every export attempt, the page also creates a `Manual DOCX download` link under the export status message. Use that link if the browser save dialog is blocked, canceled, or hidden behind another window.
+After every export attempt, the page also creates a `Manual Word download` link under the export status message. Use that link if the browser blocks the automatic download.
 
 Backend work expected after prototype validation:
 
 - URL parser service for Amazon and TikTok Shop
 - AI generation API gateway
 - prompt templates by output type
-- server-side `.docx` template export, if richer document styling is needed later
+- optional server-side `.docx` template export, if richer document styling is needed later
 - project persistence
 - audit-safe logging without sensitive user data

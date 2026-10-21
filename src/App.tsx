@@ -16,13 +16,6 @@ import {
   Sparkles,
   Truck,
 } from 'lucide-react'
-import {
-  Document,
-  HeadingLevel,
-  Packer,
-  Paragraph,
-  TextRun,
-} from 'docx'
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
@@ -42,26 +35,6 @@ type FormState = {
   adCostUsd: string
   exchangeRate: string
 }
-
-type FileSavePickerOptions = {
-  suggestedName?: string
-  types?: Array<{
-    description: string
-    accept: Record<string, string[]>
-  }>
-}
-
-type WritableFileHandle = {
-  createWritable: () => Promise<{
-    write: (data: Blob) => Promise<void>
-    close: () => Promise<void>
-  }>
-}
-
-type WindowWithFilePicker = Window &
-  typeof globalThis & {
-    showSaveFilePicker?: (options: FileSavePickerOptions) => Promise<WritableFileHandle>
-  }
 
 type ManualDownload = {
   url: string
@@ -116,7 +89,7 @@ const requirementCards = [
   {
     id: 'FR-03',
     title: 'Editable AI output',
-    text: 'Generated content can be regenerated, copied, edited, and exported as a real DOCX file.',
+    text: 'Generated content can be regenerated, copied, edited, and exported as a Word-readable RTF file.',
   },
 ]
 
@@ -338,75 +311,78 @@ Next actions
 - Ask suppliers for MOQ, defect-rate guarantee, packaging specs, and sample lead time.
 - Prepare Amazon Listing and TikTok demo script from the same approved claim set.
 - Audit hero image ratio before publishing.
-- Export this brief as DOCX and use it as the product testing worksheet.`
+- Export this brief as a Word-readable file and use it as the product testing worksheet.`
 }
 
-function createOutputParagraphs(output: string) {
-  return output.split('\n').map((line) => {
-    const trimmed = line.trim()
+function encodeRtfText(value: string) {
+  return Array.from(value)
+    .map((char) => {
+      if (char === '\\') {
+        return '\\\\'
+      }
 
-    if (!trimmed) {
-      return new Paragraph({ text: '', spacing: { after: 120 } })
-    }
+      if (char === '{') {
+        return '\\{'
+      }
 
-    if (trimmed.startsWith('- ')) {
-      return new Paragraph({
-        text: trimmed.slice(2),
-        bullet: { level: 0 },
-        spacing: { after: 80 },
-      })
-    }
+      if (char === '}') {
+        return '\\}'
+      }
 
-    const isSectionHeading =
-      !trimmed.endsWith('.') &&
-      !trimmed.includes(':') &&
-      trimmed.length <= 42
+      const codePoint = char.codePointAt(0) ?? 0
 
-    if (isSectionHeading) {
-      return new Paragraph({
-        text: trimmed,
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 220, after: 100 },
-      })
-    }
+      if (codePoint === 10) {
+        return '\\par '
+      }
 
-    return new Paragraph({
-      children: [new TextRun(trimmed)],
-      spacing: { after: 100 },
+      if (codePoint < 128) {
+        return char
+      }
+
+      if (codePoint <= 65535) {
+        const signedCodePoint = codePoint > 32767 ? codePoint - 65536 : codePoint
+        return `\\u${signedCodePoint}?`
+      }
+
+      return '?'
     })
-  })
+    .join('')
 }
 
-function createDocxDocument(form: FormState, output: string) {
-  return new Document({
-    creator: 'Cross-Border-E-Commerce MVP',
-    title: `${form.productName} AI Growth Package`,
-    description: 'AI-generated ecommerce competitor analysis and localized marketing assets.',
-    sections: [
-      {
-        properties: {},
-        children: [
-          new Paragraph({
-            text: `${form.productName} AI Growth Package`,
-            heading: HeadingLevel.TITLE,
-            spacing: { after: 180 },
-          }),
-          new Paragraph({
-            children: [
-              new TextRun({ text: 'Market: ', bold: true }),
-              new TextRun('United States'),
-              new TextRun({ text: ' | Platforms: ', bold: true }),
-              new TextRun('Amazon, TikTok Shop'),
-              new TextRun({ text: ' | Export: ', bold: true }),
-              new TextRun('DOCX'),
-            ],
-            spacing: { after: 260 },
-          }),
-          ...createOutputParagraphs(output),
-        ],
-      },
-    ],
-  })
+function createWordRtf(form: FormState, output: string) {
+  const lines = output.split('\n')
+  const body = lines
+    .map((line) => {
+      const trimmed = line.trim()
+
+      if (!trimmed) {
+        return '\\par'
+      }
+
+      if (trimmed.startsWith('- ')) {
+        return `\\pard\\li360\\fi-180\\bullet\\tab ${encodeRtfText(trimmed.slice(2))}\\par`
+      }
+
+      const isHeading =
+        !trimmed.endsWith('.') &&
+        !trimmed.includes(':') &&
+        trimmed.length <= 42
+
+      if (isHeading) {
+        return `\\pard\\sa120\\b ${encodeRtfText(trimmed)}\\b0\\par`
+      }
+
+      return `\\pard\\sa80 ${encodeRtfText(trimmed)}\\par`
+    })
+    .join('\n')
+
+  return `{\\rtf1\\ansi\\deff0
+{\\fonttbl{\\f0 Arial;}}
+\\f0\\fs24
+\\pard\\sa180\\b\\fs34 ${encodeRtfText(`${form.productName} AI Growth Package`)}\\b0\\fs24\\par
+\\pard\\sa240\\b Market:\\b0 United States | \\b Platforms:\\b0 Amazon, TikTok Shop | \\b Export:\\b0 Word RTF\\par
+${body}
+}`
 }
 
 function sanitizeFileName(value: string) {
@@ -436,7 +412,7 @@ function App() {
   const [drafts, setDrafts] = useState<Partial<Record<OutputType, string>>>({})
   const [generatedAt, setGeneratedAt] = useState('Draft ready')
   const [isExporting, setIsExporting] = useState(false)
-  const [exportStatus, setExportStatus] = useState('Choose Export DOCX to save the current tab output.')
+  const [exportStatus, setExportStatus] = useState('Choose Export Word to save the current tab output.')
   const [manualDownload, setManualDownload] = useState<ManualDownload | null>(null)
 
   const competitors = useMemo(
@@ -507,67 +483,20 @@ function App() {
     })
   }
 
-  async function exportWord() {
-    const fileName = `${sanitizeFileName(form.productName) || 'ai-export'}.docx`
-    const pickerOptions: FileSavePickerOptions = {
-      suggestedName: fileName,
-      types: [
-        {
-          description: 'Word document',
-          accept: {
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [
-              '.docx',
-            ],
-          },
-        },
-      ],
-    }
-
+  function exportWord() {
+    const fileName = `${sanitizeFileName(form.productName) || 'ai-export'}.rtf`
     setIsExporting(true)
-    setExportStatus('Preparing DOCX export...')
+    setExportStatus('Preparing Word export...')
 
     try {
-      let fileHandle: WritableFileHandle | null = null
-
-      if ((window as WindowWithFilePicker).showSaveFilePicker) {
-        try {
-          fileHandle = await (window as WindowWithFilePicker).showSaveFilePicker?.(pickerOptions) ?? null
-        } catch (error) {
-          const isCanceled =
-            error instanceof DOMException && error.name === 'AbortError'
-
-          if (isCanceled) {
-            setExportStatus('Save dialog canceled. Preparing a manual download link instead...')
-          } else {
-            console.error('Save dialog failed, falling back to browser download', error)
-            setExportStatus('Save dialog failed. Preparing a browser download instead...')
-          }
-        }
-      }
-
-      const document = createDocxDocument(form, visibleOutput)
-      const blob = await Packer.toBlob(document)
+      const rtf = createWordRtf(form, visibleOutput)
+      const blob = new Blob([rtf], { type: 'application/rtf;charset=utf-8' })
       setManualDownloadBlob(blob, fileName)
-
-      if (fileHandle) {
-        const writable = await fileHandle.createWritable()
-        await writable.write(blob)
-        await writable.close()
-        setExportStatus(`Saved ${fileName}. A backup download link is also ready below.`)
-        return
-      }
-
       downloadBlob(blob, fileName)
-      setExportStatus(`Download started: ${fileName}. If it did not appear, use the manual link below.`)
+      setExportStatus(`Word export ready: ${fileName}. If the browser did not download it, use the manual link below.`)
     } catch (error) {
-      const isCanceled =
-        error instanceof DOMException && error.name === 'AbortError'
-
-      setExportStatus(isCanceled ? 'Export canceled. The manual download link may still be available below.' : 'Export failed. Check browser download permission.')
-
-      if (!isCanceled) {
-        console.error('DOCX export failed', error)
-      }
+      setExportStatus('Word export failed. Use the output editor content as fallback.')
+      console.error('Word export failed', error)
     } finally {
       setIsExporting(false)
     }
@@ -591,7 +520,7 @@ function App() {
             disabled={isExporting}
           >
             <Download size={18} />
-            {isExporting ? 'Exporting...' : 'Export DOCX'}
+            {isExporting ? 'Exporting...' : 'Export Word'}
           </button>
         </div>
       </header>
@@ -882,7 +811,7 @@ function App() {
             <span>{exportStatus}</span>
             {manualDownload && (
               <a href={manualDownload.url} download={manualDownload.fileName}>
-                Manual DOCX download
+                Manual Word download
               </a>
             )}
           </div>
