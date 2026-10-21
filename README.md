@@ -11,7 +11,7 @@ AI prototype for a cross-border ecommerce MVP focused on:
 - First platforms: Amazon and TikTok Shop
 - First target market: United States
 - Input priority: link parsing first, manual pasted facts as fallback
-- Export format: Word-compatible `.doc`
+- Export format: real Word `.docx`
 - Account model: single-user version first
 
 ## Product Flow
@@ -23,7 +23,7 @@ AI prototype for a cross-border ecommerce MVP focused on:
 5. Generate Amazon Listing copy.
 6. Generate TikTok Shop ad scripts.
 7. Edit output manually.
-8. Export a Word-compatible file.
+8. Export a Word `.docx` file.
 
 ## Local Development
 
@@ -47,6 +47,6 @@ Backend work expected after prototype validation:
 - URL parser service for Amazon and TikTok Shop
 - AI generation API gateway
 - prompt templates by output type
-- real `.docx` export service
+- server-side `.docx` template export, if richer document styling is needed later
 - project persistence
 - audit-safe logging without sensitive user data

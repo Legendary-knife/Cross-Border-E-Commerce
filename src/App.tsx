@@ -10,6 +10,13 @@ import {
   Search,
   Sparkles,
 } from 'lucide-react'
+import {
+  Document,
+  HeadingLevel,
+  Packer,
+  Paragraph,
+  TextRun,
+} from 'docx'
 import { useMemo, useState } from 'react'
 import './App.css'
 
@@ -68,7 +75,7 @@ const requirementCards = [
   {
     id: 'FR-03',
     title: 'Editable AI output',
-    text: 'Generated content can be regenerated, copied, edited, and exported as a Word-compatible file.',
+    text: 'Generated content can be regenerated, copied, edited, and exported as a real DOCX file.',
   },
 ]
 
@@ -168,31 +175,92 @@ Caption variants
 - For desk, gym, travel, and busy mornings.`
 }
 
-function buildExportHtml(form: FormState, output: string) {
-  const escaped = output
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('\n', '<br />')
+function createOutputParagraphs(output: string) {
+  return output.split('\n').map((line) => {
+    const trimmed = line.trim()
 
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${form.productName} AI Export</title>
-  <style>
-    body { font-family: Arial, sans-serif; color: #111827; line-height: 1.55; }
-    h1 { font-size: 22px; margin-bottom: 8px; }
-    .meta { color: #4b5563; margin-bottom: 20px; }
-    .content { white-space: normal; }
-  </style>
-</head>
-<body>
-  <h1>${form.productName} AI Growth Package</h1>
-  <div class="meta">Market: United States | Platforms: Amazon, TikTok Shop | Export: Word-compatible DOC</div>
-  <div class="content">${escaped}</div>
-</body>
-</html>`
+    if (!trimmed) {
+      return new Paragraph({ text: '', spacing: { after: 120 } })
+    }
+
+    if (trimmed.startsWith('- ')) {
+      return new Paragraph({
+        text: trimmed.slice(2),
+        bullet: { level: 0 },
+        spacing: { after: 80 },
+      })
+    }
+
+    const isSectionHeading =
+      !trimmed.endsWith('.') &&
+      !trimmed.includes(':') &&
+      trimmed.length <= 42
+
+    if (isSectionHeading) {
+      return new Paragraph({
+        text: trimmed,
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 220, after: 100 },
+      })
+    }
+
+    return new Paragraph({
+      children: [new TextRun(trimmed)],
+      spacing: { after: 100 },
+    })
+  })
+}
+
+function createDocxDocument(form: FormState, output: string) {
+  return new Document({
+    creator: 'Cross-Border-E-Commerce MVP',
+    title: `${form.productName} AI Growth Package`,
+    description: 'AI-generated ecommerce competitor analysis and localized marketing assets.',
+    sections: [
+      {
+        properties: {},
+        children: [
+          new Paragraph({
+            text: `${form.productName} AI Growth Package`,
+            heading: HeadingLevel.TITLE,
+            spacing: { after: 180 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Market: ', bold: true }),
+              new TextRun('United States'),
+              new TextRun({ text: ' | Platforms: ', bold: true }),
+              new TextRun('Amazon, TikTok Shop'),
+              new TextRun({ text: ' | Export: ', bold: true }),
+              new TextRun('DOCX'),
+            ],
+            spacing: { after: 260 },
+          }),
+          ...createOutputParagraphs(output),
+        ],
+      },
+    ],
+  })
+}
+
+function sanitizeFileName(value: string) {
+  return value
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/\s+/g, '-')
+    .slice(0, 80)
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  link.rel = 'noopener'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 30000)
 }
 
 function App() {
@@ -244,17 +312,11 @@ function App() {
     })
   }
 
-  function exportWord() {
-    const html = buildExportHtml(form, visibleOutput)
-    const blob = new Blob([html], { type: 'application/msword;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${form.productName.replaceAll(' ', '-') || 'ai-export'}.doc`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
+  async function exportWord() {
+    const document = createDocxDocument(form, visibleOutput)
+    const blob = await Packer.toBlob(document)
+    const fileName = `${sanitizeFileName(form.productName) || 'ai-export'}.docx`
+    downloadBlob(blob, fileName)
   }
 
   return (
@@ -270,7 +332,7 @@ function App() {
           </button>
           <button type="button" className="primary-button" onClick={exportWord}>
             <Download size={18} />
-            Export Word
+            Export DOCX
           </button>
         </div>
       </header>
