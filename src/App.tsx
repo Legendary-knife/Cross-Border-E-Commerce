@@ -32,6 +32,26 @@ type FormState = {
   tone: string
 }
 
+type FileSavePickerOptions = {
+  suggestedName?: string
+  types?: Array<{
+    description: string
+    accept: Record<string, string[]>
+  }>
+}
+
+type WritableFileHandle = {
+  createWritable: () => Promise<{
+    write: (data: Blob) => Promise<void>
+    close: () => Promise<void>
+  }>
+}
+
+type WindowWithFilePicker = Window &
+  typeof globalThis & {
+    showSaveFilePicker?: (options: FileSavePickerOptions) => Promise<WritableFileHandle>
+  }
+
 const defaultForm: FormState = {
   productName: 'Cordless portable blender',
   category: 'Kitchen & Home',
@@ -263,12 +283,18 @@ function downloadBlob(blob: Blob, fileName: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 30000)
 }
 
+function getFilePicker() {
+  return (window as WindowWithFilePicker).showSaveFilePicker
+}
+
 function App() {
   const [form, setForm] = useState<FormState>(defaultForm)
   const [platform, setPlatform] = useState<Platform>('Amazon')
   const [activeOutput, setActiveOutput] = useState<OutputType>('analysis')
   const [drafts, setDrafts] = useState<Partial<Record<OutputType, string>>>({})
   const [generatedAt, setGeneratedAt] = useState('Draft ready')
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportStatus, setExportStatus] = useState('Choose Export DOCX to save the current tab output.')
 
   const competitors = useMemo(
     () => splitCompetitors(form.competitorUrls),
@@ -313,10 +339,52 @@ function App() {
   }
 
   async function exportWord() {
-    const document = createDocxDocument(form, visibleOutput)
-    const blob = await Packer.toBlob(document)
     const fileName = `${sanitizeFileName(form.productName) || 'ai-export'}.docx`
-    downloadBlob(blob, fileName)
+    const filePicker = getFilePicker()
+
+    setIsExporting(true)
+    setExportStatus('Preparing DOCX export...')
+
+    try {
+      if (filePicker) {
+        const fileHandle = await filePicker({
+          suggestedName: fileName,
+          types: [
+            {
+              description: 'Word document',
+              accept: {
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [
+                  '.docx',
+                ],
+              },
+            },
+          ],
+        })
+        const document = createDocxDocument(form, visibleOutput)
+        const blob = await Packer.toBlob(document)
+        const writable = await fileHandle.createWritable()
+        await writable.write(blob)
+        await writable.close()
+        setExportStatus(`Saved ${fileName}`)
+        return
+      }
+
+      const document = createDocxDocument(form, visibleOutput)
+      const blob = await Packer.toBlob(document)
+      downloadBlob(blob, fileName)
+      setExportStatus(`Download started: ${fileName}`)
+    } catch (error) {
+      const isCanceled =
+        error instanceof DOMException && error.name === 'AbortError'
+
+      setExportStatus(isCanceled ? 'Export canceled.' : 'Export failed. Check browser download permission.')
+
+      if (!isCanceled) {
+        console.error('DOCX export failed', error)
+      }
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   return (
@@ -330,9 +398,14 @@ function App() {
           <button type="button" className="icon-button" title="Regenerate" onClick={regenerate}>
             <RefreshCcw size={18} />
           </button>
-          <button type="button" className="primary-button" onClick={exportWord}>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={exportWord}
+            disabled={isExporting}
+          >
             <Download size={18} />
-            Export DOCX
+            {isExporting ? 'Exporting...' : 'Export DOCX'}
           </button>
         </div>
       </header>
@@ -528,6 +601,10 @@ function App() {
           <div className="output-meta">
             <span>Market: United States</span>
             <span>Platform focus: {platform}</span>
+          </div>
+
+          <div className="export-status" role="status">
+            {exportStatus}
           </div>
 
           <textarea

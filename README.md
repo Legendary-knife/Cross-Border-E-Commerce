@@ -42,6 +42,10 @@ npm run build
 
 This is a front-end MVP prototype. The current link parsing and AI generation behavior is simulated in the browser to validate the workflow, data fields, and UI layout before connecting real backend services.
 
+## DOCX Export
+
+Click `Export DOCX` to save the current output tab. In Chrome on localhost, the app uses the system save dialog first so the user can choose the exact save location. If the browser does not support that API, it falls back to a normal browser download.
+
 Backend work expected after prototype validation:
 
 - URL parser service for Amazon and TikTok Shop
