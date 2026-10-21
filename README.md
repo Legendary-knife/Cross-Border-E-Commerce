@@ -65,6 +65,8 @@ These modules are currently simulated in the browser. They define the UX, fields
 
 Click `Export DOCX` to save the current output tab. In Chrome on localhost, the app uses the system save dialog first so the user can choose the exact save location. If the browser does not support that API, it falls back to a normal browser download.
 
+After every export attempt, the page also creates a `Manual DOCX download` link under the export status message. Use that link if the browser save dialog is blocked, canceled, or hidden behind another window.
+
 Backend work expected after prototype validation:
 
 - URL parser service for Amazon and TikTok Shop

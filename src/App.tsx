@@ -23,7 +23,7 @@ import {
   Paragraph,
   TextRun,
 } from 'docx'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
 type Platform = 'Amazon' | 'TikTok Shop'
@@ -62,6 +62,11 @@ type WindowWithFilePicker = Window &
   typeof globalThis & {
     showSaveFilePicker?: (options: FileSavePickerOptions) => Promise<WritableFileHandle>
   }
+
+type ManualDownload = {
+  url: string
+  fileName: string
+}
 
 const defaultForm: FormState = {
   productName: 'Cordless portable blender',
@@ -424,10 +429,6 @@ function downloadBlob(blob: Blob, fileName: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 30000)
 }
 
-function getFilePicker() {
-  return (window as WindowWithFilePicker).showSaveFilePicker
-}
-
 function App() {
   const [form, setForm] = useState<FormState>(defaultForm)
   const [platform, setPlatform] = useState<Platform>('Amazon')
@@ -436,6 +437,7 @@ function App() {
   const [generatedAt, setGeneratedAt] = useState('Draft ready')
   const [isExporting, setIsExporting] = useState(false)
   const [exportStatus, setExportStatus] = useState('Choose Export DOCX to save the current tab output.')
+  const [manualDownload, setManualDownload] = useState<ManualDownload | null>(null)
 
   const competitors = useMemo(
     () => splitCompetitors(form.competitorUrls),
@@ -470,6 +472,27 @@ function App() {
   const economics = calculateEconomics(form)
   const visibleOutput = drafts[activeOutput] ?? generatedOutput
 
+  useEffect(() => {
+    return () => {
+      if (manualDownload) {
+        URL.revokeObjectURL(manualDownload.url)
+      }
+    }
+  }, [manualDownload])
+
+  function setManualDownloadBlob(blob: Blob, fileName: string) {
+    setManualDownload((current) => {
+      if (current) {
+        URL.revokeObjectURL(current.url)
+      }
+
+      return {
+        url: URL.createObjectURL(blob),
+        fileName,
+      }
+    })
+  }
+
   function updateForm(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }))
     setDrafts({})
@@ -486,44 +509,61 @@ function App() {
 
   async function exportWord() {
     const fileName = `${sanitizeFileName(form.productName) || 'ai-export'}.docx`
-    const filePicker = getFilePicker()
+    const pickerOptions: FileSavePickerOptions = {
+      suggestedName: fileName,
+      types: [
+        {
+          description: 'Word document',
+          accept: {
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [
+              '.docx',
+            ],
+          },
+        },
+      ],
+    }
 
     setIsExporting(true)
     setExportStatus('Preparing DOCX export...')
 
     try {
-      if (filePicker) {
-        const fileHandle = await filePicker({
-          suggestedName: fileName,
-          types: [
-            {
-              description: 'Word document',
-              accept: {
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [
-                  '.docx',
-                ],
-              },
-            },
-          ],
-        })
-        const document = createDocxDocument(form, visibleOutput)
-        const blob = await Packer.toBlob(document)
-        const writable = await fileHandle.createWritable()
-        await writable.write(blob)
-        await writable.close()
-        setExportStatus(`Saved ${fileName}`)
-        return
+      let fileHandle: WritableFileHandle | null = null
+
+      if ((window as WindowWithFilePicker).showSaveFilePicker) {
+        try {
+          fileHandle = await (window as WindowWithFilePicker).showSaveFilePicker?.(pickerOptions) ?? null
+        } catch (error) {
+          const isCanceled =
+            error instanceof DOMException && error.name === 'AbortError'
+
+          if (isCanceled) {
+            setExportStatus('Save dialog canceled. Preparing a manual download link instead...')
+          } else {
+            console.error('Save dialog failed, falling back to browser download', error)
+            setExportStatus('Save dialog failed. Preparing a browser download instead...')
+          }
+        }
       }
 
       const document = createDocxDocument(form, visibleOutput)
       const blob = await Packer.toBlob(document)
+      setManualDownloadBlob(blob, fileName)
+
+      if (fileHandle) {
+        const writable = await fileHandle.createWritable()
+        await writable.write(blob)
+        await writable.close()
+        setExportStatus(`Saved ${fileName}. A backup download link is also ready below.`)
+        return
+      }
+
       downloadBlob(blob, fileName)
-      setExportStatus(`Download started: ${fileName}`)
+      setExportStatus(`Download started: ${fileName}. If it did not appear, use the manual link below.`)
     } catch (error) {
       const isCanceled =
         error instanceof DOMException && error.name === 'AbortError'
 
-      setExportStatus(isCanceled ? 'Export canceled.' : 'Export failed. Check browser download permission.')
+      setExportStatus(isCanceled ? 'Export canceled. The manual download link may still be available below.' : 'Export failed. Check browser download permission.')
 
       if (!isCanceled) {
         console.error('DOCX export failed', error)
@@ -839,7 +879,12 @@ function App() {
           </div>
 
           <div className="export-status" role="status">
-            {exportStatus}
+            <span>{exportStatus}</span>
+            {manualDownload && (
+              <a href={manualDownload.url} download={manualDownload.fileName}>
+                Manual DOCX download
+              </a>
+            )}
           </div>
 
           <textarea

@@ -573,6 +573,8 @@ select:focus {
 }
 
 .export-status {
+  display: grid;
+  gap: 8px;
   padding: 10px 12px;
   border-radius: 8px;
   background: #f0fdfa;
@@ -581,6 +583,12 @@ select:focus {
   font-size: 13px;
   font-weight: 720;
   line-height: 1.35;
+}
+
+.export-status a {
+  color: #0f766e;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .output-editor {
