@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 prototype-screenshot.png
+enhanced-prototype-screenshot.png
 export-test.docx
 
 # Editor directories and files

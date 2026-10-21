@@ -1,14 +1,20 @@
 import {
   ArrowRight,
   BarChart3,
+  Camera,
+  DollarSign,
   Download,
+  Factory,
   FileText,
   Globe2,
   Link2,
   Megaphone,
+  PackageSearch,
   RefreshCcw,
   Search,
+  ShieldCheck,
   Sparkles,
+  Truck,
 } from 'lucide-react'
 import {
   Document,
@@ -21,7 +27,7 @@ import { useMemo, useState } from 'react'
 import './App.css'
 
 type Platform = 'Amazon' | 'TikTok Shop'
-type OutputType = 'analysis' | 'listing' | 'ads'
+type OutputType = 'analysis' | 'listing' | 'ads' | 'opportunity'
 
 type FormState = {
   productName: string
@@ -30,6 +36,11 @@ type FormState = {
   competitorUrls: string
   sellingPoints: string
   tone: string
+  salePriceUsd: string
+  sourceCostCny: string
+  shippingUsd: string
+  adCostUsd: string
+  exchangeRate: string
 }
 
 type FileSavePickerOptions = {
@@ -61,6 +72,11 @@ const defaultForm: FormState = {
   sellingPoints:
     'USB-C charging, BPA-free cup, easy cleaning, compact for travel, 12 oz capacity',
   tone: 'Direct response',
+  salePriceUsd: '34',
+  sourceCostCny: '68',
+  shippingUsd: '4.8',
+  adCostUsd: '5.2',
+  exchangeRate: '7.12',
 }
 
 const workflow = [
@@ -99,6 +115,45 @@ const requirementCards = [
   },
 ]
 
+const skillModules = [
+  {
+    name: 'Product Spy',
+    role: 'Trend signal',
+    note: 'Checks social momentum and competitor signals before writing copy.',
+    icon: PackageSearch,
+  },
+  {
+    name: 'Blue Ocean',
+    role: 'Sourcing gate',
+    note: 'Scores differentiation, factory quality, and margin headroom.',
+    icon: Factory,
+  },
+  {
+    name: 'Price Compare',
+    role: 'Global spread',
+    note: 'Normalizes country prices to USD for price-band decisions.',
+    icon: DollarSign,
+  },
+  {
+    name: 'Image Optimizer',
+    role: 'Listing media',
+    note: 'Flags image ratio and Amazon-ready 2000 x 2000 requirements.',
+    icon: Camera,
+  },
+  {
+    name: 'MJZJ SP',
+    role: 'Service partners',
+    note: 'Turns logistics and service-provider search into follow-up tasks.',
+    icon: Truck,
+  },
+  {
+    name: 'Listing Generator',
+    role: 'Copy rules',
+    note: 'Applies Amazon title, bullet, keyword, and claim constraints.',
+    icon: FileText,
+  },
+]
+
 function getDomain(url: string) {
   try {
     return new URL(url).hostname.replace('www.', '')
@@ -114,9 +169,45 @@ function splitCompetitors(value: string) {
     .filter(Boolean)
 }
 
+function parseMoney(value: string) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function calculateEconomics(form: FormState) {
+  const salePriceUsd = parseMoney(form.salePriceUsd)
+  const sourceCostCny = parseMoney(form.sourceCostCny)
+  const shippingUsd = parseMoney(form.shippingUsd)
+  const adCostUsd = parseMoney(form.adCostUsd)
+  const exchangeRate = parseMoney(form.exchangeRate) || 7.12
+  const sourceCostUsd = sourceCostCny / exchangeRate
+  const totalCostUsd = sourceCostUsd + shippingUsd + adCostUsd
+  const profitUsd = salePriceUsd - totalCostUsd
+  const margin = salePriceUsd > 0 ? (profitUsd / salePriceUsd) * 100 : 0
+  const status = margin >= 35 ? 'STRONG_GO' : margin >= 20 ? 'GO' : margin >= 10 ? 'WATCH' : 'PASS'
+
+  return {
+    salePriceUsd,
+    sourceCostUsd,
+    totalCostUsd,
+    profitUsd,
+    margin,
+    status,
+  }
+}
+
+function formatUsd(value: number) {
+  return `$${value.toFixed(2)}`
+}
+
+function formatStatus(value: string) {
+  return value.replaceAll('_', ' ')
+}
+
 function createAnalysis(form: FormState) {
   const competitors = splitCompetitors(form.competitorUrls)
   const domains = competitors.map(getDomain).join(', ') || 'manual competitor set'
+  const economics = calculateEconomics(form)
 
   return `Competitor analysis for ${form.productName}
 
@@ -124,6 +215,7 @@ Market: United States
 Platforms: Amazon, TikTok Shop
 Category: ${form.category}
 Source coverage: ${domains}
+Skill stack used: Product Spy, Global Price Comparison, Exchange Rate, Blue Ocean Sourcing
 
 Main competitor claims
 - Fast blending for shakes and smoothies
@@ -141,7 +233,14 @@ Opportunity angle
 - Lead with a proof-backed portability claim
 - Add usage boundaries instead of overpromising
 - Show cleaning and leak testing in video assets
-- Use Amazon copy for specifications and TikTok copy for demonstration`
+- Use Amazon copy for specifications and TikTok copy for demonstration
+
+Economics snapshot
+- Target sale price: ${formatUsd(economics.salePriceUsd)}
+- Estimated total cost: ${formatUsd(economics.totalCostUsd)}
+- Estimated profit: ${formatUsd(economics.profitUsd)}
+- Margin: ${economics.margin.toFixed(1)}%
+- Decision: ${economics.status}`
 }
 
 function createListing(form: FormState) {
@@ -193,6 +292,48 @@ Caption variants
 - Your morning smoothie just got easier.
 - Small blender, simple routine.
 - For desk, gym, travel, and busy mornings.`
+}
+
+function createOpportunity(form: FormState) {
+  const economics = calculateEconomics(form)
+  const competitors = splitCompetitors(form.competitorUrls)
+  const competitionLevel =
+    competitors.length >= 4 ? 'red ocean watch' : competitors.length >= 2 ? 'yellow ocean' : 'blue ocean candidate'
+
+  return `Skill-assisted opportunity brief
+
+Product
+${form.productName}
+
+Decision
+${economics.status}
+
+Why this product is worth testing
+- Product Spy: treat this as a trend candidate only after checking recent social mentions and at least two independent sources.
+- Global Price Comparison: use US Amazon as the first price anchor, then compare TikTok Shop and overseas marketplace spread before locking retail price.
+- Exchange Rate: current calculation uses ${form.exchangeRate} CNY per USD. Update it before supplier negotiation.
+- Blue Ocean Sourcing: prioritize factory capability, defect rate, and product improvement support instead of lowest unit cost only.
+- Listing Image Optimizer: MAIN image should be square, white background, ideally 2000 x 2000 px before Amazon upload.
+- MJZJ SP: search logistics providers for US line haul, FBA prep, and return handling after sample validation.
+
+Pricing model
+- Target sale price: ${formatUsd(economics.salePriceUsd)}
+- Source cost converted to USD: ${formatUsd(economics.sourceCostUsd)}
+- Estimated total cost: ${formatUsd(economics.totalCostUsd)}
+- Estimated profit: ${formatUsd(economics.profitUsd)}
+- Estimated margin: ${economics.margin.toFixed(1)}%
+
+Competition status
+- Competitor links supplied: ${competitors.length}
+- Current gate: ${competitionLevel}
+- Data rule: do not claim sales volume or review counts until the parser connects to verified sources.
+
+Next actions
+- Verify exact model or variant before comparing prices.
+- Ask suppliers for MOQ, defect-rate guarantee, packaging specs, and sample lead time.
+- Prepare Amazon Listing and TikTok demo script from the same approved claim set.
+- Audit hero image ratio before publishing.
+- Export this brief as DOCX and use it as the product testing worksheet.`
 }
 
 function createOutputParagraphs(output: string) {
@@ -310,7 +451,11 @@ function App() {
       return createListing(form)
     }
 
-    return createAds(form)
+    if (activeOutput === 'ads') {
+      return createAds(form)
+    }
+
+    return createOpportunity(form)
   }, [activeOutput, form])
 
   const completionScore = Math.min(
@@ -322,6 +467,7 @@ function App() {
       (form.sellingPoints ? 15 : 0),
   )
 
+  const economics = calculateEconomics(form)
   const visibleOutput = drafts[activeOutput] ?? generatedOutput
 
   function updateForm(field: keyof FormState, value: string) {
@@ -470,6 +616,52 @@ function App() {
               <option>Creator-style casual</option>
             </select>
           </label>
+
+          <div className="input-subsection">
+            <h3>Pricing assumptions</h3>
+            <div className="money-grid">
+              <label>
+                Sale USD
+                <input
+                  inputMode="decimal"
+                  value={form.salePriceUsd}
+                  onChange={(event) => updateForm('salePriceUsd', event.target.value)}
+                />
+              </label>
+              <label>
+                Cost CNY
+                <input
+                  inputMode="decimal"
+                  value={form.sourceCostCny}
+                  onChange={(event) => updateForm('sourceCostCny', event.target.value)}
+                />
+              </label>
+              <label>
+                Ship USD
+                <input
+                  inputMode="decimal"
+                  value={form.shippingUsd}
+                  onChange={(event) => updateForm('shippingUsd', event.target.value)}
+                />
+              </label>
+              <label>
+                Ads USD
+                <input
+                  inputMode="decimal"
+                  value={form.adCostUsd}
+                  onChange={(event) => updateForm('adCostUsd', event.target.value)}
+                />
+              </label>
+              <label className="wide-field">
+                CNY per USD
+                <input
+                  inputMode="decimal"
+                  value={form.exchangeRate}
+                  onChange={(event) => updateForm('exchangeRate', event.target.value)}
+                />
+              </label>
+            </div>
+          </div>
         </aside>
 
         <section className="center-panel">
@@ -512,11 +704,30 @@ function App() {
 
           <div className="status-row">
             <div>
-              <span>Input readiness</span>
+              <span>Opportunity score</span>
               <strong>{completionScore}%</strong>
             </div>
             <div className="progress-track">
               <span style={{ width: `${completionScore}%` }} />
+            </div>
+          </div>
+
+          <div className="economics-strip">
+            <div>
+              <span>Decision</span>
+              <strong>{formatStatus(economics.status)}</strong>
+            </div>
+            <div>
+              <span>Margin</span>
+              <strong>{economics.margin.toFixed(1)}%</strong>
+            </div>
+            <div>
+              <span>Profit</span>
+              <strong>{formatUsd(economics.profitUsd)}</strong>
+            </div>
+            <div>
+              <span>Total cost</span>
+              <strong>{formatUsd(economics.totalCostUsd)}</strong>
             </div>
           </div>
 
@@ -560,6 +771,22 @@ function App() {
               </article>
             ))}
           </div>
+
+          <div className="skill-grid">
+            {skillModules.map((item) => {
+              const Icon = item.icon
+              return (
+                <article key={item.name}>
+                  <div className="skill-icon">
+                    <Icon size={17} />
+                  </div>
+                  <span>{item.role}</span>
+                  <h3>{item.name}</h3>
+                  <p>{item.note}</p>
+                </article>
+              )
+            })}
+          </div>
         </section>
 
         <aside className="output-panel">
@@ -595,6 +822,14 @@ function App() {
             >
               <Megaphone size={16} />
               Ads
+            </button>
+            <button
+              type="button"
+              className={activeOutput === 'opportunity' ? 'selected' : ''}
+              onClick={() => setActiveOutput('opportunity')}
+            >
+              <ShieldCheck size={16} />
+              Opportunity
             </button>
           </div>
 

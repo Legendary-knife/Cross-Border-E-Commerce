@@ -20,7 +20,9 @@
 .panel-heading h2,
 .preview-copy h2,
 .flow-item h3,
-.requirements-grid h3 {
+.requirements-grid h3,
+.skill-grid h3,
+.input-subsection h3 {
   margin: 0;
   color: #101817;
   letter-spacing: 0;
@@ -115,7 +117,8 @@ button {
 .preview-visual,
 .status-row,
 .flow-list,
-.requirements-grid article {
+.requirements-grid article,
+.skill-grid article {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid #dfe7e4;
   border-radius: 8px;
@@ -150,6 +153,7 @@ button {
 .preview-copy p,
 .flow-item p,
 .requirements-grid p,
+.skill-grid p,
 .risk-note p {
   margin: 4px 0 0;
   color: #64706e;
@@ -196,6 +200,31 @@ textarea:focus,
 select:focus {
   border-color: #0f766e;
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+.input-subsection {
+  display: grid;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.input-subsection h3 {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.money-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.money-grid label {
+  gap: 6px;
+}
+
+.wide-field {
+  grid-column: 1 / -1;
 }
 
 .center-panel {
@@ -377,6 +406,36 @@ select:focus {
   background: linear-gradient(90deg, #0f766e, #14b8a6);
 }
 
+.economics-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.economics-strip > div {
+  display: grid;
+  gap: 5px;
+  min-height: 74px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #dfe7e4;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+}
+
+.economics-strip span {
+  color: #64706e;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.economics-strip strong {
+  color: #0f766e;
+  font-size: 16px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
 .platform-switch,
 .output-tabs {
   display: grid;
@@ -439,7 +498,8 @@ select:focus {
 }
 
 .flow-item h3,
-.requirements-grid h3 {
+.requirements-grid h3,
+.skill-grid h3 {
   font-size: 15px;
   line-height: 1.25;
 }
@@ -451,13 +511,15 @@ select:focus {
   color: #94a3b8;
 }
 
-.requirements-grid {
+.requirements-grid,
+.skill-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.requirements-grid article {
+.requirements-grid article,
+.skill-grid article {
   padding: 16px;
 }
 
@@ -469,8 +531,27 @@ select:focus {
   font-weight: 800;
 }
 
+.skill-grid span {
+  display: inline-flex;
+  margin: 10px 0 8px;
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.skill-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #0f766e;
+}
+
 .output-tabs {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .output-meta {
@@ -557,7 +638,9 @@ select:focus {
 
   .preview-visual,
   .flow-list,
-  .requirements-grid {
+  .requirements-grid,
+  .skill-grid,
+  .economics-strip {
     grid-template-columns: 1fr;
   }
 
