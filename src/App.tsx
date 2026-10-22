@@ -59,18 +59,18 @@ const defaultForm: FormState = {
 
 const workflow = [
   {
-    title: 'Link parsing',
-    note: 'Amazon and TikTok Shop URLs are converted into product facts.',
+    title: '链接解析',
+    note: '把 Amazon 和 TikTok Shop 链接转成商品基础信息。',
     icon: Link2,
   },
   {
-    title: 'Competitor readout',
-    note: 'The system extracts price range, claims, review pain points, and keyword gaps.',
+    title: '竞品解读',
+    note: '提取价格带、卖点、评价痛点和关键词缺口。',
     icon: BarChart3,
   },
   {
-    title: 'Localized assets',
-    note: 'US-market Listing copy and short-form ad scripts are generated from the same project source.',
+    title: '本地化素材',
+    note: '基于同一份商品信息生成美国市场 Listing 和短视频脚本。',
     icon: Globe2,
   },
 ]
@@ -78,56 +78,56 @@ const workflow = [
 const requirementCards = [
   {
     id: 'FR-01',
-    title: 'Project intake',
-    text: 'Single-user project workspace for one product, US market, Amazon and TikTok Shop.',
+    title: '项目录入',
+    text: '单用户工作台，聚焦一个商品、美国市场、Amazon 和 TikTok Shop。',
   },
   {
     id: 'FR-02',
-    title: 'Link-first input',
-    text: 'Product and competitor links are the primary input. Manual pasted facts remain the fallback.',
+    title: '链接优先',
+    text: '商品链接和竞品链接是主要输入，手动粘贴信息作为兜底。',
   },
   {
     id: 'FR-03',
-    title: 'Editable AI output',
-    text: 'Generated content can be regenerated, copied, edited, and exported as a Word-readable RTF file.',
+    title: '结果可编辑',
+    text: '生成内容可以重新生成、复制、编辑，并导出为 Word 可打开的 RTF 文件。',
   },
 ]
 
 const skillModules = [
   {
     name: 'Product Spy',
-    role: 'Trend signal',
-    note: 'Checks social momentum and competitor signals before writing copy.',
+    role: '趋势信号',
+    note: '在写文案前先看社媒热度和竞品信号。',
     icon: PackageSearch,
   },
   {
     name: 'Blue Ocean',
-    role: 'Sourcing gate',
-    note: 'Scores differentiation, factory quality, and margin headroom.',
+    role: '蓝海判断',
+    note: '评估差异化、工厂质量和利润空间。',
     icon: Factory,
   },
   {
     name: 'Price Compare',
-    role: 'Global spread',
-    note: 'Normalizes country prices to USD for price-band decisions.',
+    role: '价格比较',
+    note: '把不同市场价格统一成美元，辅助判断价格带。',
     icon: DollarSign,
   },
   {
     name: 'Image Optimizer',
-    role: 'Listing media',
-    note: 'Flags image ratio and Amazon-ready 2000 x 2000 requirements.',
+    role: '图片检查',
+    note: '提示主图比例、白底图和 Amazon 图片尺寸要求。',
     icon: Camera,
   },
   {
     name: 'MJZJ SP',
-    role: 'Service partners',
-    note: 'Turns logistics and service-provider search into follow-up tasks.',
+    role: '服务商跟进',
+    note: '把物流、海外仓、服务商搜索整理成后续任务。',
     icon: Truck,
   },
   {
     name: 'Listing Generator',
-    role: 'Copy rules',
-    note: 'Applies Amazon title, bullet, keyword, and claim constraints.',
+    role: '文案规则',
+    note: '按 Amazon 标题、五点、关键词和卖点限制组织文案。',
     icon: FileText,
   },
 ]
@@ -179,7 +179,14 @@ function formatUsd(value: number) {
 }
 
 function formatStatus(value: string) {
-  return value.replaceAll('_', ' ')
+  const statusLabels: Record<string, string> = {
+    STRONG_GO: '强烈可测',
+    GO: '可以测试',
+    WATCH: '继续观察',
+    PASS: '暂不建议',
+  }
+
+  return statusLabels[value] ?? value.replaceAll('_', ' ')
 }
 
 function createAnalysis(form: FormState) {
@@ -410,9 +417,9 @@ function App() {
   const [platform, setPlatform] = useState<Platform>('Amazon')
   const [activeOutput, setActiveOutput] = useState<OutputType>('analysis')
   const [drafts, setDrafts] = useState<Partial<Record<OutputType, string>>>({})
-  const [generatedAt, setGeneratedAt] = useState('Draft ready')
+  const [generatedAt, setGeneratedAt] = useState('草稿已就绪')
   const [isExporting, setIsExporting] = useState(false)
-  const [exportStatus, setExportStatus] = useState('Choose Export Word to save the current tab output.')
+  const [exportStatus, setExportStatus] = useState('点击“导出 Word”保存当前输出内容。')
   const [manualDownload, setManualDownload] = useState<ManualDownload | null>(null)
 
   const competitors = useMemo(
@@ -475,7 +482,7 @@ function App() {
   }
 
   function regenerate() {
-    setGeneratedAt(`Generated at ${new Date().toLocaleTimeString()}`)
+    setGeneratedAt(`生成于 ${new Date().toLocaleTimeString()}`)
     setDrafts((current) => {
       const next = { ...current }
       delete next[activeOutput]
@@ -486,16 +493,16 @@ function App() {
   function exportWord() {
     const fileName = `${sanitizeFileName(form.productName) || 'ai-export'}.rtf`
     setIsExporting(true)
-    setExportStatus('Preparing Word export...')
+    setExportStatus('正在准备 Word 文件...')
 
     try {
       const rtf = createWordRtf(form, visibleOutput)
       const blob = new Blob([rtf], { type: 'application/rtf;charset=utf-8' })
       setManualDownloadBlob(blob, fileName)
       downloadBlob(blob, fileName)
-      setExportStatus(`Word export ready: ${fileName}. If the browser did not download it, use the manual link below.`)
+      setExportStatus(`Word 文件已生成：${fileName}。如果浏览器没有自动下载，请点下面的手动下载链接。`)
     } catch (error) {
-      setExportStatus('Word export failed. Use the output editor content as fallback.')
+      setExportStatus('Word 导出失败。可以先复制右侧编辑框内容作为兜底。')
       console.error('Word export failed', error)
     } finally {
       setIsExporting(false)
@@ -506,11 +513,11 @@ function App() {
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">Cross-border AI MVP</p>
-          <h1>AI growth workspace for US ecommerce operators</h1>
+          <p className="eyebrow">跨境电商 AI MVP</p>
+          <h1>面向美国市场的跨境电商 AI 增长工作台</h1>
         </div>
         <div className="topbar-actions">
-          <button type="button" className="icon-button" title="Regenerate" onClick={regenerate}>
+          <button type="button" className="icon-button" title="重新生成" onClick={regenerate}>
             <RefreshCcw size={18} />
           </button>
           <button
@@ -520,7 +527,7 @@ function App() {
             disabled={isExporting}
           >
             <Download size={18} />
-            {isExporting ? 'Exporting...' : 'Export Word'}
+            {isExporting ? '导出中...' : '导出 Word'}
           </button>
         </div>
       </header>
@@ -530,13 +537,13 @@ function App() {
           <div className="panel-heading">
             <Search size={19} />
             <div>
-              <h2>Project input</h2>
-              <p>Amazon and TikTok Shop links first, manual facts as fallback.</p>
+              <h2>项目信息</h2>
+              <p>优先输入 Amazon 和 TikTok Shop 链接，手动信息作为兜底。</p>
             </div>
           </div>
 
           <label>
-            Product name
+            商品名称
             <input
               value={form.productName}
               onChange={(event) => updateForm('productName', event.target.value)}
@@ -544,7 +551,7 @@ function App() {
           </label>
 
           <label>
-            Category
+            商品类目
             <input
               value={form.category}
               onChange={(event) => updateForm('category', event.target.value)}
@@ -552,7 +559,7 @@ function App() {
           </label>
 
           <label>
-            Product link
+            商品链接
             <input
               value={form.productUrl}
               onChange={(event) => updateForm('productUrl', event.target.value)}
@@ -560,7 +567,7 @@ function App() {
           </label>
 
           <label>
-            Competitor links
+            竞品链接
             <textarea
               rows={4}
               value={form.competitorUrls}
@@ -569,7 +576,7 @@ function App() {
           </label>
 
           <label>
-            Product facts
+            商品卖点
             <textarea
               rows={4}
               value={form.sellingPoints}
@@ -578,19 +585,19 @@ function App() {
           </label>
 
           <label>
-            Output tone
+            输出语气
             <select value={form.tone} onChange={(event) => updateForm('tone', event.target.value)}>
-              <option>Direct response</option>
-              <option>Premium retail</option>
-              <option>Creator-style casual</option>
+              <option value="Direct response">直接转化型</option>
+              <option value="Premium retail">高端零售型</option>
+              <option value="Creator-style casual">达人口播型</option>
             </select>
           </label>
 
           <div className="input-subsection">
-            <h3>Pricing assumptions</h3>
+            <h3>利润测算假设</h3>
             <div className="money-grid">
               <label>
-                Sale USD
+                售价 USD
                 <input
                   inputMode="decimal"
                   value={form.salePriceUsd}
@@ -598,7 +605,7 @@ function App() {
                 />
               </label>
               <label>
-                Cost CNY
+                采购成本 CNY
                 <input
                   inputMode="decimal"
                   value={form.sourceCostCny}
@@ -606,7 +613,7 @@ function App() {
                 />
               </label>
               <label>
-                Ship USD
+                运费 USD
                 <input
                   inputMode="decimal"
                   value={form.shippingUsd}
@@ -614,7 +621,7 @@ function App() {
                 />
               </label>
               <label>
-                Ads USD
+                广告费 USD
                 <input
                   inputMode="decimal"
                   value={form.adCostUsd}
@@ -622,7 +629,7 @@ function App() {
                 />
               </label>
               <label className="wide-field">
-                CNY per USD
+                人民币兑美元
                 <input
                   inputMode="decimal"
                   value={form.exchangeRate}
@@ -635,7 +642,7 @@ function App() {
 
         <section className="center-panel">
           <div className="preview-visual">
-            <div className="commerce-visual" aria-label="Ecommerce AI workspace preview">
+            <div className="commerce-visual" aria-label="跨境电商 AI 工作台预览">
               <div className="visual-toolbar">
                 <span />
                 <span />
@@ -649,11 +656,11 @@ function App() {
               </div>
               <div className="visual-card card-a">
                 <strong>4.6</strong>
-                <span>Review signal</span>
+                <span>评价信号</span>
               </div>
               <div className="visual-card card-b">
                 <strong>$34</strong>
-                <span>Price band</span>
+                <span>价格带</span>
               </div>
               <div className="visual-bars">
                 <span />
@@ -662,18 +669,18 @@ function App() {
               </div>
             </div>
             <div className="preview-copy">
-              <p className="eyebrow">MVP scope</p>
-              <h2>Single-user workflow from links to sellable copy</h2>
+              <p className="eyebrow">MVP 范围</p>
+              <h2>从链接到可销售文案的单用户工作流</h2>
               <p>
-                The first version focuses on one product, one market, and two platforms. The user
-                reviews every AI output before export.
+                首版聚焦一个商品、一个美国市场、Amazon 和 TikTok Shop 两个平台。
+                所有 AI 输出都先由用户确认，再导出交付。
               </p>
             </div>
           </div>
 
           <div className="status-row">
             <div>
-              <span>Opportunity score</span>
+              <span>机会评分</span>
               <strong>{completionScore}%</strong>
             </div>
             <div className="progress-track">
@@ -683,24 +690,24 @@ function App() {
 
           <div className="economics-strip">
             <div>
-              <span>Decision</span>
+              <span>判断</span>
               <strong>{formatStatus(economics.status)}</strong>
             </div>
             <div>
-              <span>Margin</span>
+              <span>毛利率</span>
               <strong>{economics.margin.toFixed(1)}%</strong>
             </div>
             <div>
-              <span>Profit</span>
+              <span>利润</span>
               <strong>{formatUsd(economics.profitUsd)}</strong>
             </div>
             <div>
-              <span>Total cost</span>
+              <span>总成本</span>
               <strong>{formatUsd(economics.totalCostUsd)}</strong>
             </div>
           </div>
 
-          <div className="platform-switch" aria-label="Platform selector">
+          <div className="platform-switch" aria-label="平台选择">
             {(['Amazon', 'TikTok Shop'] as Platform[]).map((item) => (
               <button
                 key={item}
@@ -762,7 +769,7 @@ function App() {
           <div className="panel-heading">
             <Sparkles size={19} />
             <div>
-              <h2>AI output</h2>
+              <h2>AI 输出</h2>
               <p>{generatedAt}</p>
             </div>
           </div>
@@ -774,7 +781,7 @@ function App() {
               onClick={() => setActiveOutput('analysis')}
             >
               <BarChart3 size={16} />
-              Analysis
+              竞品分析
             </button>
             <button
               type="button"
@@ -782,7 +789,7 @@ function App() {
               onClick={() => setActiveOutput('listing')}
             >
               <FileText size={16} />
-              Listing
+              Listing 文案
             </button>
             <button
               type="button"
@@ -790,7 +797,7 @@ function App() {
               onClick={() => setActiveOutput('ads')}
             >
               <Megaphone size={16} />
-              Ads
+              广告脚本
             </button>
             <button
               type="button"
@@ -798,20 +805,20 @@ function App() {
               onClick={() => setActiveOutput('opportunity')}
             >
               <ShieldCheck size={16} />
-              Opportunity
+              机会简报
             </button>
           </div>
 
           <div className="output-meta">
-            <span>Market: United States</span>
-            <span>Platform focus: {platform}</span>
+            <span>目标市场：美国</span>
+            <span>平台重点：{platform}</span>
           </div>
 
           <div className="export-status" role="status">
             <span>{exportStatus}</span>
             {manualDownload && (
               <a href={manualDownload.url} download={manualDownload.fileName}>
-                Manual Word download
+                手动下载 Word 文件
               </a>
             )}
           </div>
@@ -825,14 +832,13 @@ function App() {
                 [activeOutput]: event.target.value,
               }))
             }
-            aria-label="Generated AI output"
+            aria-label="AI 生成结果编辑区"
           />
 
           <div className="risk-note">
-            <strong>MVP guardrail</strong>
+            <strong>MVP 边界提醒</strong>
             <p>
-              The prototype flags content for human review. It does not publish to stores or make
-              final platform compliance decisions.
+              当前原型只辅助生成和整理内容，不会自动发布到店铺，也不替代平台合规审核。
             </p>
           </div>
         </aside>
