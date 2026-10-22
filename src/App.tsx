@@ -1,13 +1,13 @@
 import {
-  ArrowRight,
   BarChart3,
   Camera,
+  CheckCircle2,
+  ClipboardList,
   DollarSign,
   Download,
   Factory,
   FileText,
   Globe2,
-  Link2,
   Megaphone,
   PackageSearch,
   RefreshCcw,
@@ -20,7 +20,6 @@ import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
 type Platform = 'Amazon' | 'TikTok Shop'
-type OutputType = 'analysis' | 'listing' | 'ads' | 'opportunity'
 
 type FormState = {
   productName: string
@@ -41,6 +40,14 @@ type ManualDownload = {
   fileName: string
 }
 
+type SkillModule = {
+  name: string
+  role: string
+  output: string
+  status: '已纳入' | '待接入'
+  icon: typeof Search
+}
+
 const defaultForm: FormState = {
   productName: 'Cordless portable blender',
   category: 'Kitchen & Home',
@@ -57,80 +64,71 @@ const defaultForm: FormState = {
   exchangeRate: '7.12',
 }
 
-const workflow = [
+const skillModules: SkillModule[] = [
   {
-    title: '链接解析',
-    note: '把 Amazon 和 TikTok Shop 链接转成商品基础信息。',
-    icon: Link2,
+    name: 'ecom-product-orchestrator',
+    role: '总控编排',
+    output: '把输入、测算、竞品、Listing、广告脚本和下一步任务串成一份运营报告。',
+    status: '已纳入',
+    icon: ClipboardList,
   },
   {
-    title: '竞品解读',
-    note: '提取价格带、卖点、评价痛点和关键词缺口。',
-    icon: BarChart3,
-  },
-  {
-    title: '本地化素材',
-    note: '基于同一份商品信息生成美国市场 Listing 和短视频脚本。',
-    icon: Globe2,
-  },
-]
-
-const requirementCards = [
-  {
-    id: 'FR-01',
-    title: '项目录入',
-    text: '单用户工作台，聚焦一个商品、美国市场、Amazon 和 TikTok Shop。',
-  },
-  {
-    id: 'FR-02',
-    title: '链接优先',
-    text: '商品链接和竞品链接是主要输入，手动粘贴信息作为兜底。',
-  },
-  {
-    id: 'FR-03',
-    title: '结果可编辑',
-    text: '生成内容可以重新生成、复制、编辑，并导出为 Word 可打开的 RTF 文件。',
-  },
-]
-
-const skillModules = [
-  {
-    name: 'Product Spy',
-    role: '趋势信号',
-    note: '在写文案前先看社媒热度和竞品信号。',
+    name: 'product-spy',
+    role: '趋势雷达',
+    output: '判断当前商品是否值得继续做社媒热度、竞品数量和内容角度验证。',
+    status: '已纳入',
     icon: PackageSearch,
   },
   {
-    name: 'Blue Ocean',
-    role: '蓝海判断',
-    note: '评估差异化、工厂质量和利润空间。',
+    name: 'blue-ocean-sourcing',
+    role: '蓝海采购',
+    output: '从差异化、工厂能力、打样成本和利润空间判断是否进入样品阶段。',
+    status: '已纳入',
     icon: Factory,
   },
   {
-    name: 'Price Compare',
-    role: '价格比较',
-    note: '把不同市场价格统一成美元，辅助判断价格带。',
+    name: 'global-price-comparison',
+    role: '全球比价',
+    output: '用美国价格作为首个锚点，提醒后续接入其他站点价格带对比。',
+    status: '已纳入',
+    icon: Globe2,
+  },
+  {
+    name: 'exchange-rate',
+    role: '汇率换算',
+    output: '把人民币采购价换算成美元成本，参与利润和毛利率判断。',
+    status: '已纳入',
     icon: DollarSign,
   },
   {
-    name: 'Image Optimizer',
+    name: 'ecommerce-listing-generator',
+    role: 'Listing 文案',
+    output: '生成美国 Amazon 可用的标题、五点描述、长描述和搜索词。',
+    status: '已纳入',
+    icon: FileText,
+  },
+  {
+    name: 'skill-listing-image-optimizer',
     role: '图片检查',
-    note: '提示主图比例、白底图和 Amazon 图片尺寸要求。',
+    output: '提醒主图、白底图、尺寸、场景图和 claim 证明图的检查事项。',
+    status: '已纳入',
     icon: Camera,
   },
   {
-    name: 'MJZJ SP',
-    role: '服务商跟进',
-    note: '把物流、海外仓、服务商搜索整理成后续任务。',
+    name: 'mjzj-sp',
+    role: '服务商任务',
+    output: '把物流、海外仓、退货、拍摄和合规服务整理成后续跟进任务。',
+    status: '已纳入',
     icon: Truck,
   },
-  {
-    name: 'Listing Generator',
-    role: '文案规则',
-    note: '按 Amazon 标题、五点、关键词和卖点限制组织文案。',
-    icon: FileText,
-  },
 ]
+
+function splitCompetitors(value: string) {
+  return value
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
 
 function getDomain(url: string) {
   try {
@@ -138,13 +136,6 @@ function getDomain(url: string) {
   } catch {
     return 'manual input'
   }
-}
-
-function splitCompetitors(value: string) {
-  return value
-    .split('\n')
-    .map((item) => item.trim())
-    .filter(Boolean)
 }
 
 function parseMoney(value: string) {
@@ -167,6 +158,8 @@ function calculateEconomics(form: FormState) {
   return {
     salePriceUsd,
     sourceCostUsd,
+    shippingUsd,
+    adCostUsd,
     totalCostUsd,
     profitUsd,
     margin,
@@ -189,43 +182,20 @@ function formatStatus(value: string) {
   return statusLabels[value] ?? value.replaceAll('_', ' ')
 }
 
-function createAnalysis(form: FormState) {
-  const competitors = splitCompetitors(form.competitorUrls)
-  const domains = competitors.map(getDomain).join(', ') || 'manual competitor set'
-  const economics = calculateEconomics(form)
+function getDecisionSummary(status: string) {
+  if (status === 'STRONG_GO') {
+    return '利润空间较好，可以进入样品验证和素材测试。'
+  }
 
-  return `Competitor analysis for ${form.productName}
+  if (status === 'GO') {
+    return '可以小规模测试，但需要继续确认竞品价格和广告成本。'
+  }
 
-Market: United States
-Platforms: Amazon, TikTok Shop
-Category: ${form.category}
-Source coverage: ${domains}
-Skill stack used: Product Spy, Global Price Comparison, Exchange Rate, Blue Ocean Sourcing
+  if (status === 'WATCH') {
+    return '建议先观察，重点压低成本或提高售价后再测试。'
+  }
 
-Main competitor claims
-- Fast blending for shakes and smoothies
-- Travel-friendly form factor
-- USB charging and easy cleaning
-- Giftable lifestyle positioning
-
-Observed buyer pain points
-- Weak motor performance with frozen fruit
-- Battery life is unclear or overstated
-- Cleaning claims need proof
-- Leakage risk is a repeated trust concern
-
-Opportunity angle
-- Lead with a proof-backed portability claim
-- Add usage boundaries instead of overpromising
-- Show cleaning and leak testing in video assets
-- Use Amazon copy for specifications and TikTok copy for demonstration
-
-Economics snapshot
-- Target sale price: ${formatUsd(economics.salePriceUsd)}
-- Estimated total cost: ${formatUsd(economics.totalCostUsd)}
-- Estimated profit: ${formatUsd(economics.profitUsd)}
-- Margin: ${economics.margin.toFixed(1)}%
-- Decision: ${economics.status}`
+  return '当前利润空间不足，不建议直接进入投放测试。'
 }
 
 function createListing(form: FormState) {
@@ -248,7 +218,7 @@ Search keywords
 portable blender, personal blender, USB blender, travel blender, smoothie blender, protein shake blender`
 }
 
-function createAds(form: FormState) {
+function createAdScript(form: FormState) {
   return `TikTok Shop Ad Script - US Market
 
 Product
@@ -279,46 +249,117 @@ Caption variants
 - For desk, gym, travel, and busy mornings.`
 }
 
-function createOpportunity(form: FormState) {
-  const economics = calculateEconomics(form)
+function createEnglishCompetitorBrief(form: FormState) {
   const competitors = splitCompetitors(form.competitorUrls)
-  const competitionLevel =
-    competitors.length >= 4 ? 'red ocean watch' : competitors.length >= 2 ? 'yellow ocean' : 'blue ocean candidate'
+  const domains = competitors.map(getDomain).join(', ') || 'manual competitor set'
 
-  return `Skill-assisted opportunity brief
+  return `Competitor Readout - US Market
 
 Product
 ${form.productName}
 
-Decision
-${economics.status}
+Category
+${form.category}
 
-Why this product is worth testing
-- Product Spy: treat this as a trend candidate only after checking recent social mentions and at least two independent sources.
-- Global Price Comparison: use US Amazon as the first price anchor, then compare TikTok Shop and overseas marketplace spread before locking retail price.
-- Exchange Rate: current calculation uses ${form.exchangeRate} CNY per USD. Update it before supplier negotiation.
-- Blue Ocean Sourcing: prioritize factory capability, defect rate, and product improvement support instead of lowest unit cost only.
-- Listing Image Optimizer: MAIN image should be square, white background, ideally 2000 x 2000 px before Amazon upload.
-- MJZJ SP: search logistics providers for US line haul, FBA prep, and return handling after sample validation.
+Sources
+${domains}
 
-Pricing model
-- Target sale price: ${formatUsd(economics.salePriceUsd)}
-- Source cost converted to USD: ${formatUsd(economics.sourceCostUsd)}
-- Estimated total cost: ${formatUsd(economics.totalCostUsd)}
-- Estimated profit: ${formatUsd(economics.profitUsd)}
-- Estimated margin: ${economics.margin.toFixed(1)}%
+Main competitor claims
+- Fast blending for shakes and smoothies
+- Travel-friendly form factor
+- USB charging and easy cleaning
+- Giftable lifestyle positioning
 
-Competition status
-- Competitor links supplied: ${competitors.length}
-- Current gate: ${competitionLevel}
-- Data rule: do not claim sales volume or review counts until the parser connects to verified sources.
+Observed buyer pain points
+- Weak motor performance with frozen fruit
+- Battery life is unclear or overstated
+- Cleaning claims need proof
+- Leakage risk is a repeated trust concern
 
-Next actions
-- Verify exact model or variant before comparing prices.
-- Ask suppliers for MOQ, defect-rate guarantee, packaging specs, and sample lead time.
-- Prepare Amazon Listing and TikTok demo script from the same approved claim set.
-- Audit hero image ratio before publishing.
-- Export this brief as a Word-readable file and use it as the product testing worksheet.`
+Opportunity angle
+- Lead with proof-backed portability
+- Avoid overpromising frozen-fruit performance
+- Show cleaning and leak testing in video assets
+- Keep Amazon copy specification-heavy and TikTok copy demo-heavy`
+}
+
+function createChineseReport(form: FormState, platforms: Platform[]) {
+  const economics = calculateEconomics(form)
+  const competitors = splitCompetitors(form.competitorUrls)
+  const competitorDomains = competitors.map(getDomain)
+  const productSpyScore = Math.min(92, 58 + competitors.length * 8)
+  const imageScore = form.sellingPoints.toLowerCase().includes('bpa') ? 82 : 68
+  const sourcingScore = economics.margin >= 35 ? 86 : economics.margin >= 20 ? 72 : 58
+  const priceScore = economics.margin >= 35 ? 88 : economics.margin >= 20 ? 74 : 55
+
+  return {
+    economics,
+    competitors,
+    competitorDomains,
+    productSpyScore,
+    imageScore,
+    sourcingScore,
+    priceScore,
+    decision: formatStatus(economics.status),
+    decisionSummary: getDecisionSummary(economics.status),
+    platforms: platforms.join(' / '),
+    nextActions: [
+      '确认竞品真实销量、评价数量和近 30 天内容热度。',
+      '找 3 家供应商询价，重点确认 MOQ、打样费、交期、质检标准。',
+      '补齐主图、场景图、尺寸图、卖点证明图，优先满足 Amazon 主图规范。',
+      '用英文 Listing 和 TikTok 脚本各做 2 个版本，准备小预算广告测试。',
+      '导出报告给运营或供应链同事复核，再决定是否进入样品采购。',
+    ],
+    risks: [
+      '当前链接解析和竞品数据仍是前端模拟，真实上线前必须接后端解析服务。',
+      '利润测算没有包含平台佣金、仓储费、退货损耗和税费。',
+      '广告脚本和 Listing 文案需要人工复核平台禁词、医疗/功效类 claim。',
+    ],
+  }
+}
+
+function buildReportText(form: FormState, platforms: Platform[], listing: string, adScript: string) {
+  const report = createChineseReport(form, platforms)
+
+  return `跨境电商 AI 运营报告
+
+商品：${form.productName}
+类目：${form.category}
+目标市场：美国
+平台：${report.platforms}
+
+一、机会结论
+判断：${report.decision}
+说明：${report.decisionSummary}
+
+二、利润测算
+目标售价：${formatUsd(report.economics.salePriceUsd)}
+采购成本折美元：${formatUsd(report.economics.sourceCostUsd)}
+预估运费：${formatUsd(report.economics.shippingUsd)}
+预估广告成本：${formatUsd(report.economics.adCostUsd)}
+总成本：${formatUsd(report.economics.totalCostUsd)}
+单件利润：${formatUsd(report.economics.profitUsd)}
+毛利率：${report.economics.margin.toFixed(1)}%
+
+三、竞品与趋势
+竞品数量：${report.competitors.length}
+竞品来源：${report.competitorDomains.join(', ') || 'manual input'}
+Product Spy 评分：${report.productSpyScore}/100
+Price Compare 评分：${report.priceScore}/100
+Blue Ocean 评分：${report.sourcingScore}/100
+Image Optimizer 评分：${report.imageScore}/100
+
+四、下一步行动
+${report.nextActions.map((item, index) => `${index + 1}. ${item}`).join('\n')}
+
+五、主要风险
+${report.risks.map((item, index) => `${index + 1}. ${item}`).join('\n')}
+
+六、英文 Listing 素材
+${listing}
+
+七、英文 TikTok 素材
+${adScript}`
 }
 
 function encodeRtfText(value: string) {
@@ -356,8 +397,8 @@ function encodeRtfText(value: string) {
     .join('')
 }
 
-function createWordRtf(form: FormState, output: string) {
-  const lines = output.split('\n')
+function createWordRtf(content: string) {
+  const lines = content.split('\n')
   const body = lines
     .map((line) => {
       const trimmed = line.trim()
@@ -366,17 +407,13 @@ function createWordRtf(form: FormState, output: string) {
         return '\\par'
       }
 
-      if (trimmed.startsWith('- ')) {
-        return `\\pard\\li360\\fi-180\\bullet\\tab ${encodeRtfText(trimmed.slice(2))}\\par`
-      }
-
       const isHeading =
-        !trimmed.endsWith('.') &&
-        !trimmed.includes(':') &&
-        trimmed.length <= 42
+        trimmed.includes('、') ||
+        trimmed === '跨境电商 AI 运营报告' ||
+        trimmed.endsWith('素材')
 
       if (isHeading) {
-        return `\\pard\\sa120\\b ${encodeRtfText(trimmed)}\\b0\\par`
+        return `\\pard\\sa140\\b ${encodeRtfText(trimmed)}\\b0\\par`
       }
 
       return `\\pard\\sa80 ${encodeRtfText(trimmed)}\\par`
@@ -386,8 +423,6 @@ function createWordRtf(form: FormState, output: string) {
   return `{\\rtf1\\ansi\\deff0
 {\\fonttbl{\\f0 Arial;}}
 \\f0\\fs24
-\\pard\\sa180\\b\\fs34 ${encodeRtfText(`${form.productName} AI Growth Package`)}\\b0\\fs24\\par
-\\pard\\sa240\\b Market:\\b0 United States | \\b Platforms:\\b0 Amazon, TikTok Shop | \\b Export:\\b0 Word RTF\\par
 ${body}
 }`
 }
@@ -414,46 +449,34 @@ function downloadBlob(blob: Blob, fileName: string) {
 
 function App() {
   const [form, setForm] = useState<FormState>(defaultForm)
-  const [platform, setPlatform] = useState<Platform>('Amazon')
-  const [activeOutput, setActiveOutput] = useState<OutputType>('analysis')
-  const [drafts, setDrafts] = useState<Partial<Record<OutputType, string>>>({})
-  const [generatedAt, setGeneratedAt] = useState('草稿已就绪')
+  const [platforms, setPlatforms] = useState<Platform[]>(['Amazon', 'TikTok Shop'])
+  const [generatedAt, setGeneratedAt] = useState('报告已就绪')
   const [isExporting, setIsExporting] = useState(false)
-  const [exportStatus, setExportStatus] = useState('点击“导出 Word”保存当前输出内容。')
+  const [exportStatus, setExportStatus] = useState('点击“导出 Word”保存完整中文运营报告。')
   const [manualDownload, setManualDownload] = useState<ManualDownload | null>(null)
 
   const competitors = useMemo(
     () => splitCompetitors(form.competitorUrls),
     [form.competitorUrls],
   )
-
-  const generatedOutput = useMemo(() => {
-    if (activeOutput === 'analysis') {
-      return createAnalysis(form)
-    }
-
-    if (activeOutput === 'listing') {
-      return createListing(form)
-    }
-
-    if (activeOutput === 'ads') {
-      return createAds(form)
-    }
-
-    return createOpportunity(form)
-  }, [activeOutput, form])
-
-  const completionScore = Math.min(
-    100,
-    25 +
-      (form.productName ? 15 : 0) +
-      (form.productUrl ? 20 : 0) +
-      (competitors.length ? 25 : 0) +
-      (form.sellingPoints ? 15 : 0),
+  const listingDraft = useMemo(() => createListing(form), [form])
+  const adScript = useMemo(() => createAdScript(form), [form])
+  const competitorBrief = useMemo(() => createEnglishCompetitorBrief(form), [form])
+  const report = useMemo(() => createChineseReport(form, platforms), [form, platforms])
+  const fullReportText = useMemo(
+    () => buildReportText(form, platforms, listingDraft, adScript),
+    [adScript, form, listingDraft, platforms],
   )
 
-  const economics = calculateEconomics(form)
-  const visibleOutput = drafts[activeOutput] ?? generatedOutput
+  const readinessScore = Math.min(
+    100,
+    20 +
+      (form.productName ? 15 : 0) +
+      (form.productUrl ? 18 : 0) +
+      (competitors.length ? 22 : 0) +
+      (form.sellingPoints ? 15 : 0) +
+      (parseMoney(form.salePriceUsd) ? 10 : 0),
+  )
 
   useEffect(() => {
     return () => {
@@ -478,31 +501,35 @@ function App() {
 
   function updateForm(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }))
-    setDrafts({})
   }
 
-  function regenerate() {
-    setGeneratedAt(`生成于 ${new Date().toLocaleTimeString()}`)
-    setDrafts((current) => {
-      const next = { ...current }
-      delete next[activeOutput]
-      return next
+  function togglePlatform(platform: Platform) {
+    setPlatforms((current) => {
+      if (current.includes(platform)) {
+        return current.length === 1 ? current : current.filter((item) => item !== platform)
+      }
+
+      return [...current, platform]
     })
   }
 
+  function generateReport() {
+    setGeneratedAt(`生成于 ${new Date().toLocaleTimeString()}`)
+  }
+
   function exportWord() {
-    const fileName = `${sanitizeFileName(form.productName) || 'ai-export'}.rtf`
+    const fileName = `${sanitizeFileName(form.productName) || 'ecommerce-report'}-运营报告.rtf`
     setIsExporting(true)
     setExportStatus('正在准备 Word 文件...')
 
     try {
-      const rtf = createWordRtf(form, visibleOutput)
+      const rtf = createWordRtf(fullReportText)
       const blob = new Blob([rtf], { type: 'application/rtf;charset=utf-8' })
       setManualDownloadBlob(blob, fileName)
       downloadBlob(blob, fileName)
       setExportStatus(`Word 文件已生成：${fileName}。如果浏览器没有自动下载，请点下面的手动下载链接。`)
     } catch (error) {
-      setExportStatus('Word 导出失败。可以先复制右侧编辑框内容作为兜底。')
+      setExportStatus('Word 导出失败。可以先复制页面报告内容作为兜底。')
       console.error('Word export failed', error)
     } finally {
       setIsExporting(false)
@@ -511,21 +538,20 @@ function App() {
 
   return (
     <main className="app-shell">
-      <header className="topbar">
+      <header className="hero">
         <div>
-          <p className="eyebrow">跨境电商 AI MVP</p>
-          <h1>面向美国市场的跨境电商 AI 增长工作台</h1>
+          <p className="eyebrow">跨境电商 AI 运营台</p>
+          <h1>输入商品和竞品链接，一键生成中文运营报告与英文销售素材</h1>
+          <p className="hero-copy">
+            这版把你发来的 Skill 组合成一条完整流程：趋势判断、蓝海采购、价格测算、Listing、广告脚本、图片检查和服务商任务。
+          </p>
         </div>
-        <div className="topbar-actions">
-          <button type="button" className="icon-button" title="重新生成" onClick={regenerate}>
+        <div className="hero-actions">
+          <button type="button" className="secondary-button" onClick={generateReport}>
             <RefreshCcw size={18} />
+            一键生成报告
           </button>
-          <button
-            type="button"
-            className="primary-button"
-            onClick={exportWord}
-            disabled={isExporting}
-          >
+          <button type="button" className="primary-button" onClick={exportWord} disabled={isExporting}>
             <Download size={18} />
             {isExporting ? '导出中...' : '导出 Word'}
           </button>
@@ -537,63 +563,72 @@ function App() {
           <div className="panel-heading">
             <Search size={19} />
             <div>
-              <h2>项目信息</h2>
-              <p>优先输入 Amazon 和 TikTok Shop 链接，手动信息作为兜底。</p>
+              <h2>输入区</h2>
+              <p>先填商品、链接和利润假设，右侧报告会同步更新。</p>
             </div>
           </div>
 
-          <label>
-            商品名称
-            <input
-              value={form.productName}
-              onChange={(event) => updateForm('productName', event.target.value)}
-            />
-          </label>
+          <div className="step-card">
+            <span>步骤 1</span>
+            <h3>选择目标平台</h3>
+            <div className="platform-switch">
+              {(['Amazon', 'TikTok Shop'] as Platform[]).map((platform) => (
+                <button
+                  key={platform}
+                  type="button"
+                  className={platforms.includes(platform) ? 'selected' : ''}
+                  onClick={() => togglePlatform(platform)}
+                >
+                  {platform}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <label>
-            商品类目
-            <input
-              value={form.category}
-              onChange={(event) => updateForm('category', event.target.value)}
-            />
-          </label>
+          <div className="step-card">
+            <span>步骤 2</span>
+            <h3>商品和竞品信息</h3>
+            <label>
+              商品名称
+              <input
+                value={form.productName}
+                onChange={(event) => updateForm('productName', event.target.value)}
+              />
+            </label>
+            <label>
+              商品类目
+              <input
+                value={form.category}
+                onChange={(event) => updateForm('category', event.target.value)}
+              />
+            </label>
+            <label>
+              商品链接
+              <input
+                value={form.productUrl}
+                onChange={(event) => updateForm('productUrl', event.target.value)}
+              />
+            </label>
+            <label>
+              竞品链接
+              <textarea
+                rows={4}
+                value={form.competitorUrls}
+                onChange={(event) => updateForm('competitorUrls', event.target.value)}
+              />
+            </label>
+            <label>
+              商品卖点
+              <textarea
+                rows={4}
+                value={form.sellingPoints}
+                onChange={(event) => updateForm('sellingPoints', event.target.value)}
+              />
+            </label>
+          </div>
 
-          <label>
-            商品链接
-            <input
-              value={form.productUrl}
-              onChange={(event) => updateForm('productUrl', event.target.value)}
-            />
-          </label>
-
-          <label>
-            竞品链接
-            <textarea
-              rows={4}
-              value={form.competitorUrls}
-              onChange={(event) => updateForm('competitorUrls', event.target.value)}
-            />
-          </label>
-
-          <label>
-            商品卖点
-            <textarea
-              rows={4}
-              value={form.sellingPoints}
-              onChange={(event) => updateForm('sellingPoints', event.target.value)}
-            />
-          </label>
-
-          <label>
-            输出语气
-            <select value={form.tone} onChange={(event) => updateForm('tone', event.target.value)}>
-              <option value="Direct response">直接转化型</option>
-              <option value="Premium retail">高端零售型</option>
-              <option value="Creator-style casual">达人口播型</option>
-            </select>
-          </label>
-
-          <div className="input-subsection">
+          <div className="step-card">
+            <span>步骤 3</span>
             <h3>利润测算假设</h3>
             <div className="money-grid">
               <label>
@@ -640,208 +675,151 @@ function App() {
           </div>
         </aside>
 
-        <section className="center-panel">
-          <div className="preview-visual">
-            <div className="commerce-visual" aria-label="跨境电商 AI 工作台预览">
-              <div className="visual-toolbar">
-                <span />
-                <span />
-                <span />
-              </div>
-              <div className="visual-product">
-                <div className="bottle-cap" />
-                <div className="bottle-body">
-                  <Sparkles size={26} />
-                </div>
-              </div>
-              <div className="visual-card card-a">
-                <strong>4.6</strong>
-                <span>评价信号</span>
-              </div>
-              <div className="visual-card card-b">
-                <strong>$34</strong>
-                <span>价格带</span>
-              </div>
-              <div className="visual-bars">
-                <span />
-                <span />
-                <span />
-              </div>
+        <section className="report-panel">
+          <div className="report-toolbar">
+            <div>
+              <p className="eyebrow">中文运营报告</p>
+              <h2>{form.productName}</h2>
+              <p>{generatedAt}，目标市场：美国，平台：{report.platforms}</p>
             </div>
-            <div className="preview-copy">
-              <p className="eyebrow">MVP 范围</p>
-              <h2>从链接到可销售文案的单用户工作流</h2>
-              <p>
-                首版聚焦一个商品、一个美国市场、Amazon 和 TikTok Shop 两个平台。
-                所有 AI 输出都先由用户确认，再导出交付。
-              </p>
+            <div className="export-status" role="status">
+              <span>{exportStatus}</span>
+              {manualDownload && (
+                <a href={manualDownload.url} download={manualDownload.fileName}>
+                  手动下载 Word 文件
+                </a>
+              )}
             </div>
           </div>
 
-          <div className="status-row">
-            <div>
-              <span>机会评分</span>
-              <strong>{completionScore}%</strong>
-            </div>
-            <div className="progress-track">
-              <span style={{ width: `${completionScore}%` }} />
-            </div>
-          </div>
-
-          <div className="economics-strip">
-            <div>
-              <span>判断</span>
-              <strong>{formatStatus(economics.status)}</strong>
-            </div>
-            <div>
+          <div className="kpi-grid">
+            <article>
+              <span>机会判断</span>
+              <strong>{report.decision}</strong>
+              <p>{report.decisionSummary}</p>
+            </article>
+            <article>
+              <span>准备度</span>
+              <strong>{readinessScore}%</strong>
+              <p>输入越完整，报告可信度越高。</p>
+            </article>
+            <article>
               <span>毛利率</span>
-              <strong>{economics.margin.toFixed(1)}%</strong>
-            </div>
-            <div>
-              <span>利润</span>
-              <strong>{formatUsd(economics.profitUsd)}</strong>
-            </div>
-            <div>
-              <span>总成本</span>
-              <strong>{formatUsd(economics.totalCostUsd)}</strong>
-            </div>
+              <strong>{report.economics.margin.toFixed(1)}%</strong>
+              <p>未含平台佣金、仓储和退货损耗。</p>
+            </article>
+            <article>
+              <span>单件利润</span>
+              <strong>{formatUsd(report.economics.profitUsd)}</strong>
+              <p>售价减采购、物流和广告成本。</p>
+            </article>
           </div>
 
-          <div className="platform-switch" aria-label="平台选择">
-            {(['Amazon', 'TikTok Shop'] as Platform[]).map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={platform === item ? 'selected' : ''}
-                onClick={() => setPlatform(item)}
-              >
-                {item}
-              </button>
-            ))}
+          <div className="section-grid">
+            <article className="report-card">
+              <div className="card-heading">
+                <ShieldCheck size={18} />
+                <h3>一、机会结论</h3>
+              </div>
+              <p>
+                当前商品在 {report.platforms} 的初步判断为 <strong>{report.decision}</strong>。
+                {report.decisionSummary}
+              </p>
+              <div className="score-list">
+                <span>Product Spy：{report.productSpyScore}/100</span>
+                <span>Blue Ocean：{report.sourcingScore}/100</span>
+                <span>Price Compare：{report.priceScore}/100</span>
+                <span>Image Optimizer：{report.imageScore}/100</span>
+              </div>
+            </article>
+
+            <article className="report-card">
+              <div className="card-heading">
+                <DollarSign size={18} />
+                <h3>二、利润测算</h3>
+              </div>
+              <div className="economics-grid">
+                <span>售价 {formatUsd(report.economics.salePriceUsd)}</span>
+                <span>采购 {formatUsd(report.economics.sourceCostUsd)}</span>
+                <span>运费 {formatUsd(report.economics.shippingUsd)}</span>
+                <span>广告 {formatUsd(report.economics.adCostUsd)}</span>
+                <span>总成本 {formatUsd(report.economics.totalCostUsd)}</span>
+                <span>利润 {formatUsd(report.economics.profitUsd)}</span>
+              </div>
+            </article>
           </div>
 
-          <div className="flow-list">
-            {workflow.map((step, index) => {
-              const Icon = step.icon
-              return (
-                <div className="flow-item" key={step.title}>
-                  <div className="flow-icon">
-                    <Icon size={18} />
+          <article className="report-card">
+            <div className="card-heading">
+              <Sparkles size={18} />
+              <h3>三、Skill 编排结果</h3>
+            </div>
+            <div className="skill-orchestrator">
+              {skillModules.map((item) => {
+                const Icon = item.icon
+                return (
+                  <div key={item.name} className="skill-node">
+                    <div>
+                      <Icon size={17} />
+                      <strong>{item.role}</strong>
+                    </div>
+                    <span>{item.name}</span>
+                    <p>{item.output}</p>
+                    <em>{item.status}</em>
                   </div>
-                  <div>
-                    <h3>{step.title}</h3>
-                    <p>{step.note}</p>
-                  </div>
-                  {index < workflow.length - 1 && <ArrowRight className="flow-arrow" size={18} />}
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="requirements-grid">
-            {requirementCards.map((item) => (
-              <article key={item.id}>
-                <span>{item.id}</span>
-                <h3>{item.title}</h3>
-                <p>{item.text}</p>
-              </article>
-            ))}
-          </div>
-
-          <div className="skill-grid">
-            {skillModules.map((item) => {
-              const Icon = item.icon
-              return (
-                <article key={item.name}>
-                  <div className="skill-icon">
-                    <Icon size={17} />
-                  </div>
-                  <span>{item.role}</span>
-                  <h3>{item.name}</h3>
-                  <p>{item.note}</p>
-                </article>
-              )
-            })}
-          </div>
-        </section>
-
-        <aside className="output-panel">
-          <div className="panel-heading">
-            <Sparkles size={19} />
-            <div>
-              <h2>AI 输出</h2>
-              <p>{generatedAt}</p>
+                )
+              })}
             </div>
+          </article>
+
+          <div className="section-grid">
+            <article className="report-card">
+              <div className="card-heading">
+                <BarChart3 size={18} />
+                <h3>四、竞品洞察</h3>
+              </div>
+              <pre>{competitorBrief}</pre>
+            </article>
+
+            <article className="report-card">
+              <div className="card-heading">
+                <CheckCircle2 size={18} />
+                <h3>五、下一步行动</h3>
+              </div>
+              <ol className="action-list">
+                {report.nextActions.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ol>
+            </article>
           </div>
 
-          <div className="output-tabs">
-            <button
-              type="button"
-              className={activeOutput === 'analysis' ? 'selected' : ''}
-              onClick={() => setActiveOutput('analysis')}
-            >
-              <BarChart3 size={16} />
-              竞品分析
-            </button>
-            <button
-              type="button"
-              className={activeOutput === 'listing' ? 'selected' : ''}
-              onClick={() => setActiveOutput('listing')}
-            >
-              <FileText size={16} />
-              Listing 文案
-            </button>
-            <button
-              type="button"
-              className={activeOutput === 'ads' ? 'selected' : ''}
-              onClick={() => setActiveOutput('ads')}
-            >
-              <Megaphone size={16} />
-              广告脚本
-            </button>
-            <button
-              type="button"
-              className={activeOutput === 'opportunity' ? 'selected' : ''}
-              onClick={() => setActiveOutput('opportunity')}
-            >
-              <ShieldCheck size={16} />
-              机会简报
-            </button>
+          <div className="section-grid">
+            <article className="report-card">
+              <div className="card-heading">
+                <FileText size={18} />
+                <h3>六、英文 Listing 素材</h3>
+              </div>
+              <pre>{listingDraft}</pre>
+            </article>
+
+            <article className="report-card">
+              <div className="card-heading">
+                <Megaphone size={18} />
+                <h3>七、英文 TikTok 素材</h3>
+              </div>
+              <pre>{adScript}</pre>
+            </article>
           </div>
 
-          <div className="output-meta">
-            <span>目标市场：美国</span>
-            <span>平台重点：{platform}</span>
-          </div>
-
-          <div className="export-status" role="status">
-            <span>{exportStatus}</span>
-            {manualDownload && (
-              <a href={manualDownload.url} download={manualDownload.fileName}>
-                手动下载 Word 文件
-              </a>
-            )}
-          </div>
-
-          <textarea
-            className="output-editor"
-            value={visibleOutput}
-            onChange={(event) =>
-              setDrafts((current) => ({
-                ...current,
-                [activeOutput]: event.target.value,
-              }))
-            }
-            aria-label="AI 生成结果编辑区"
-          />
-
-          <div className="risk-note">
-            <strong>MVP 边界提醒</strong>
+          <article className="risk-note">
+            <strong>边界提醒</strong>
             <p>
-              当前原型只辅助生成和整理内容，不会自动发布到店铺，也不替代平台合规审核。
+              当前版本是前端 MVP，链接解析、竞品销量、社媒热度和服务商查询仍是模拟报告结构。
+              真实上线前需要接入后端解析、AI 生成、汇率、价格比较和日志脱敏。
             </p>
-          </div>
-        </aside>
+          </article>
+        </section>
       </section>
     </main>
   )

@@ -2,10 +2,10 @@
 
 AI prototype for a cross-border ecommerce MVP focused on:
 
-- AI competitor analysis
-- Amazon Listing localization
-- TikTok Shop ad script generation
-- skill-assisted product opportunity scoring
+- Chinese cross-border ecommerce operation report
+- English Amazon Listing localization
+- English TikTok Shop ad script generation
+- skill-orchestrated opportunity scoring
 - cost, exchange-rate, and margin simulation
 - image, sourcing, and service-provider readiness checks
 
@@ -19,15 +19,12 @@ AI prototype for a cross-border ecommerce MVP focused on:
 
 ## Product Flow
 
-1. Create one product project.
-2. Add product and competitor links.
-3. Review parsed product facts.
-4. Generate competitor analysis.
-5. Generate Amazon Listing copy.
-6. Generate TikTok Shop ad scripts.
-7. Review the skill-assisted opportunity brief.
-8. Edit output manually.
-9. Export a Word-readable `.rtf` file.
+1. Select Amazon and/or TikTok Shop.
+2. Add product link, competitor links, and product facts.
+3. Add sale price, purchase cost, shipping cost, ad cost, and exchange rate.
+4. Generate a Chinese operation report.
+5. Review visual KPIs, skill orchestration results, competitor insights, action items, and English assets.
+6. Export the full report as a Word-readable `.rtf` file when needed.
 
 ## Local Development
 
@@ -44,7 +41,7 @@ npm run build
 
 ## Current Prototype Scope
 
-This is a front-end MVP prototype. The current link parsing and AI generation behavior is simulated in the browser to validate the workflow, data fields, and UI layout before connecting real backend services.
+This is a front-end MVP prototype. The current link parsing, competitor readout, scoring, and AI generation behavior is simulated in the browser to validate the workflow, report structure, data fields, and UI layout before connecting real backend services.
 
 ## Skill-Inspired Modules
 
@@ -63,7 +60,7 @@ These modules are currently simulated in the browser. They define the UX, fields
 
 ## Word Export
 
-Click `Export Word` to save the current output tab as `.rtf`. RTF opens directly in Microsoft Word, WPS, Pages, and most office apps.
+Click `Export Word` to save the full Chinese operation report as `.rtf`. RTF opens directly in Microsoft Word, WPS, Pages, and most office apps.
 
 After every export attempt, the page also creates a `Manual Word download` link under the export status message. Use that link if the browser blocks the automatic download.
 
