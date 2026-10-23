@@ -3,6 +3,7 @@ import {
   Camera,
   CheckCircle2,
   ClipboardList,
+  Copy,
   DollarSign,
   Download,
   Factory,
@@ -43,6 +44,26 @@ type ManualDownload = {
 }
 
 type DocxModule = typeof import('docx')
+
+type FileSavePickerOptions = {
+  suggestedName?: string
+  types?: Array<{
+    description: string
+    accept: Record<string, string[]>
+  }>
+}
+
+type WritableFileHandle = {
+  createWritable: () => Promise<{
+    write: (data: Blob) => Promise<void>
+    close: () => Promise<void>
+  }>
+}
+
+type WindowWithFilePicker = Window &
+  typeof globalThis & {
+    showSaveFilePicker?: (options: FileSavePickerOptions) => Promise<WritableFileHandle>
+  }
 
 type SkillModule = {
   name: string
@@ -465,6 +486,42 @@ function downloadBlob(blob: Blob, fileName: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 30000)
 }
 
+async function saveDocxBlob(blob: Blob, fileName: string) {
+  const pickerWindow = window as WindowWithFilePicker
+
+  if (!pickerWindow.showSaveFilePicker) {
+    downloadBlob(blob, fileName)
+    return 'download'
+  }
+
+  try {
+    const fileHandle = await pickerWindow.showSaveFilePicker({
+      suggestedName: fileName,
+      types: [
+        {
+          description: 'Word document',
+          accept: {
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+          },
+        },
+      ],
+    })
+    const writable = await fileHandle.createWritable()
+    await writable.write(blob)
+    await writable.close()
+    return 'saved'
+  } catch (error) {
+    const isCanceled = error instanceof DOMException && error.name === 'AbortError'
+
+    if (isCanceled) {
+      throw error
+    }
+
+    downloadBlob(blob, fileName)
+    return 'download'
+  }
+}
+
 function App() {
   const [form, setForm] = useState<FormState>(defaultForm)
   const [platforms, setPlatforms] = useState<Platform[]>(['Amazon', 'TikTok Shop'])
@@ -546,13 +603,36 @@ function App() {
       const document = createDocxDocument(fullReportText, docx)
       const blob = await docx.Packer.toBlob(document)
       setManualDownloadBlob(blob, fileName, '手动下载 DOCX 文件')
-      downloadBlob(blob, fileName)
-      setExportStatus(`DOCX 文件已生成：${fileName}。如果浏览器没有自动下载，请点下面的手动下载链接。`)
+      const result = await saveDocxBlob(blob, fileName)
+      setExportStatus(
+        result === 'saved'
+          ? `DOCX 文件已保存：${fileName}。下方也保留了手动下载链接。`
+          : `DOCX 文件已生成：${fileName}。如果浏览器没有自动下载，请点下面的手动下载链接。`,
+      )
     } catch (error) {
-      setExportStatus('DOCX 导出失败。请使用“打印版”作为兜底。')
-      console.error('DOCX export failed', error)
+      const isCanceled = error instanceof DOMException && error.name === 'AbortError'
+
+      setExportStatus(
+        isCanceled
+          ? '已取消系统保存窗口。文件已生成，可以点下面的手动下载 DOCX 文件。'
+          : 'DOCX 导出失败。请使用“复制报告”或“打印版”作为兜底。',
+      )
+
+      if (!isCanceled) {
+        console.error('DOCX export failed', error)
+      }
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  async function copyReport() {
+    try {
+      await navigator.clipboard.writeText(fullReportText)
+      setExportStatus('报告正文已复制。可以直接粘贴到 Word、WPS 或飞书文档。')
+    } catch (error) {
+      setExportStatus('复制失败。请手动选中页面内容复制。')
+      console.error('Copy report failed', error)
     }
   }
 
@@ -608,6 +688,10 @@ function App() {
           <button type="button" className="primary-button" onClick={exportDocx} disabled={isExporting}>
             <Download size={18} />
             {isExporting ? '导出中...' : '导出 DOCX'}
+          </button>
+          <button type="button" className="secondary-button" onClick={copyReport}>
+            <Copy size={18} />
+            复制报告
           </button>
           <button type="button" className="secondary-button" onClick={openPrintView}>
             <Printer size={18} />
