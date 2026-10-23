@@ -3,6 +3,7 @@ import {
   Camera,
   CheckCircle2,
   ClipboardList,
+  Copy,
   DollarSign,
   Download,
   Factory,
@@ -15,6 +16,7 @@ import {
   ShieldCheck,
   Sparkles,
   Truck,
+  Printer,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
@@ -38,7 +40,10 @@ type FormState = {
 type ManualDownload = {
   url: string
   fileName: string
+  label: string
 }
+
+type DocxModule = typeof import('docx')
 
 type SkillModule = {
   name: string
@@ -427,6 +432,85 @@ ${body}
 }`
 }
 
+function createDocxParagraphs(content: string, docx: DocxModule) {
+  const { HeadingLevel, Paragraph, TextRun } = docx
+
+  return content.split('\n').map((line) => {
+    const trimmed = line.trim()
+
+    if (!trimmed) {
+      return new Paragraph({ text: '', spacing: { after: 80 } })
+    }
+
+    if (trimmed === '跨境电商 AI 运营报告') {
+      return new Paragraph({
+        text: trimmed,
+        heading: HeadingLevel.TITLE,
+        spacing: { after: 220 },
+      })
+    }
+
+    const isSectionHeading = /^[一二三四五六七八九十]+、/.test(trimmed)
+
+    if (isSectionHeading) {
+      return new Paragraph({
+        text: trimmed,
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 260, after: 120 },
+      })
+    }
+
+    if (/^\d+\.\s/.test(trimmed)) {
+      return new Paragraph({
+        children: [new TextRun(trimmed)],
+        spacing: { after: 80 },
+        indent: { left: 360 },
+      })
+    }
+
+    if (trimmed.startsWith('- ')) {
+      return new Paragraph({
+        text: trimmed.slice(2),
+        bullet: { level: 0 },
+        spacing: { after: 80 },
+      })
+    }
+
+    const [label, ...rest] = trimmed.split('：')
+
+    if (rest.length > 0 && label.length <= 12) {
+      return new Paragraph({
+        children: [
+          new TextRun({ text: `${label}：`, bold: true }),
+          new TextRun(rest.join('：')),
+        ],
+        spacing: { after: 90 },
+      })
+    }
+
+    return new Paragraph({
+      children: [new TextRun(trimmed)],
+      spacing: { after: 90 },
+    })
+  })
+}
+
+function createDocxDocument(content: string, docx: DocxModule) {
+  const { Document } = docx
+
+  return new Document({
+    creator: 'Cross-Border-E-Commerce',
+    title: '跨境电商 AI 运营报告',
+    description: 'Chinese operation report with English ecommerce assets.',
+    sections: [
+      {
+        properties: {},
+        children: createDocxParagraphs(content, docx),
+      },
+    ],
+  })
+}
+
 function sanitizeFileName(value: string) {
   return value
     .trim()
@@ -452,7 +536,7 @@ function App() {
   const [platforms, setPlatforms] = useState<Platform[]>(['Amazon', 'TikTok Shop'])
   const [generatedAt, setGeneratedAt] = useState('报告已就绪')
   const [isExporting, setIsExporting] = useState(false)
-  const [exportStatus, setExportStatus] = useState('点击“导出 Word”保存完整中文运营报告。')
+  const [exportStatus, setExportStatus] = useState('点击“导出 DOCX”保存完整中文运营报告。')
   const [manualDownload, setManualDownload] = useState<ManualDownload | null>(null)
 
   const competitors = useMemo(
@@ -486,7 +570,7 @@ function App() {
     }
   }, [manualDownload])
 
-  function setManualDownloadBlob(blob: Blob, fileName: string) {
+  function setManualDownloadBlob(blob: Blob, fileName: string, label: string) {
     setManualDownload((current) => {
       if (current) {
         URL.revokeObjectURL(current.url)
@@ -495,6 +579,7 @@ function App() {
       return {
         url: URL.createObjectURL(blob),
         fileName,
+        label,
       }
     })
   }
@@ -517,23 +602,84 @@ function App() {
     setGeneratedAt(`生成于 ${new Date().toLocaleTimeString()}`)
   }
 
-  function exportWord() {
-    const fileName = `${sanitizeFileName(form.productName) || 'ecommerce-report'}-运营报告.rtf`
+  async function exportDocx() {
+    const fileName = `${sanitizeFileName(form.productName) || 'ecommerce-report'}-运营报告.docx`
     setIsExporting(true)
-    setExportStatus('正在准备 Word 文件...')
+    setExportStatus('正在准备 DOCX 文件...')
+
+    try {
+      const docx = await import('docx')
+      const document = createDocxDocument(fullReportText, docx)
+      const blob = await docx.Packer.toBlob(document)
+      setManualDownloadBlob(blob, fileName, '手动下载 DOCX 文件')
+      downloadBlob(blob, fileName)
+      setExportStatus(`DOCX 文件已生成：${fileName}。如果浏览器没有自动下载，请点下面的手动下载链接。`)
+    } catch (error) {
+      setExportStatus('DOCX 导出失败。请使用“备用 RTF”或“复制报告”。')
+      console.error('DOCX export failed', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  function exportRtf() {
+    const fileName = `${sanitizeFileName(form.productName) || 'ecommerce-report'}-运营报告-备用.rtf`
+    setExportStatus('正在准备 RTF 备用文件...')
 
     try {
       const rtf = createWordRtf(fullReportText)
       const blob = new Blob([rtf], { type: 'application/rtf;charset=utf-8' })
-      setManualDownloadBlob(blob, fileName)
+      setManualDownloadBlob(blob, fileName, '手动下载 RTF 备用文件')
       downloadBlob(blob, fileName)
-      setExportStatus(`Word 文件已生成：${fileName}。如果浏览器没有自动下载，请点下面的手动下载链接。`)
+      setExportStatus(`RTF 备用文件已生成：${fileName}。Word 和 WPS 都可以打开。`)
     } catch (error) {
-      setExportStatus('Word 导出失败。可以先复制页面报告内容作为兜底。')
-      console.error('Word export failed', error)
-    } finally {
-      setIsExporting(false)
+      setExportStatus('RTF 备用导出失败。请使用“复制报告”。')
+      console.error('RTF export failed', error)
     }
+  }
+
+  async function copyReport() {
+    try {
+      await navigator.clipboard.writeText(fullReportText)
+      setExportStatus('报告正文已复制。可以直接粘贴到 Word、WPS 或飞书文档。')
+    } catch (error) {
+      setExportStatus('复制失败。请手动选中页面内容复制。')
+      console.error('Copy report failed', error)
+    }
+  }
+
+  function openPrintView() {
+    const escapedReport = fullReportText
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+
+    const printWindow = window.open('', '_blank')
+
+    if (!printWindow) {
+      setExportStatus('打印窗口被浏览器拦截。请允许弹窗，或使用 DOCX/RTF 下载。')
+      return
+    }
+
+    printWindow.opener = null
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>跨境电商 AI 运营报告</title>
+          <meta charset="utf-8" />
+          <style>
+            body { margin: 40px; color: #111827; font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+            pre { white-space: pre-wrap; font-size: 14px; line-height: 1.65; }
+          </style>
+        </head>
+        <body>
+          <pre>${escapedReport}</pre>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    setExportStatus('已打开打印版。可以在浏览器里打印，或另存为 PDF。')
   }
 
   return (
@@ -551,9 +697,21 @@ function App() {
             <RefreshCcw size={18} />
             一键生成报告
           </button>
-          <button type="button" className="primary-button" onClick={exportWord} disabled={isExporting}>
+          <button type="button" className="primary-button" onClick={exportDocx} disabled={isExporting}>
             <Download size={18} />
-            {isExporting ? '导出中...' : '导出 Word'}
+            {isExporting ? '导出中...' : '导出 DOCX'}
+          </button>
+          <button type="button" className="secondary-button" onClick={exportRtf}>
+            <FileText size={18} />
+            备用 RTF
+          </button>
+          <button type="button" className="secondary-button" onClick={copyReport}>
+            <Copy size={18} />
+            复制报告
+          </button>
+          <button type="button" className="secondary-button" onClick={openPrintView}>
+            <Printer size={18} />
+            打印版
           </button>
         </div>
       </header>
@@ -686,7 +844,7 @@ function App() {
               <span>{exportStatus}</span>
               {manualDownload && (
                 <a href={manualDownload.url} download={manualDownload.fileName}>
-                  手动下载 Word 文件
+                  {manualDownload.label}
                 </a>
               )}
             </div>

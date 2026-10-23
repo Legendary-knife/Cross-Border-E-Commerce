@@ -14,7 +14,7 @@ AI prototype for a cross-border ecommerce MVP focused on:
 - First platforms: Amazon and TikTok Shop
 - First target market: United States
 - Input priority: link parsing first, manual pasted facts as fallback
-- Export format: Word-readable `.rtf`
+- Export format: real `.docx`, with `.rtf`, copy, and print fallbacks
 - Account model: single-user version first
 
 ## Product Flow
@@ -24,7 +24,8 @@ AI prototype for a cross-border ecommerce MVP focused on:
 3. Add sale price, purchase cost, shipping cost, ad cost, and exchange rate.
 4. Generate a Chinese operation report.
 5. Review visual KPIs, skill orchestration results, competitor insights, action items, and English assets.
-6. Export the full report as a Word-readable `.rtf` file when needed.
+6. Export the full report as a `.docx` file when needed.
+7. If browser download is blocked, use the manual link, RTF fallback, copy action, or printable view.
 
 ## Local Development
 
@@ -60,9 +61,13 @@ These modules are currently simulated in the browser. They define the UX, fields
 
 ## Word Export
 
-Click `Export Word` to save the full Chinese operation report as `.rtf`. RTF opens directly in Microsoft Word, WPS, Pages, and most office apps.
+Click `Export DOCX` to save the full Chinese operation report as a real `.docx` file. The DOCX generator is lazy-loaded only when the user exports, keeping the initial app lighter.
 
-After every export attempt, the page also creates a `Manual Word download` link under the export status message. Use that link if the browser blocks the automatic download.
+After every export attempt, the page also creates a manual download link under the export status message. If the browser blocks or hides the automatic download, use one of the fallback actions:
+
+- `备用 RTF`: exports a Word-readable `.rtf` file
+- `复制报告`: copies the full report text to the clipboard
+- `打印版`: opens a clean printable report view
 
 Backend work expected after prototype validation:
 

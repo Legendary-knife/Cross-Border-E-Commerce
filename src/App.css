@@ -52,8 +52,11 @@
 
 .hero-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 10px;
   flex: 0 0 auto;
+  max-width: 620px;
 }
 
 button {
