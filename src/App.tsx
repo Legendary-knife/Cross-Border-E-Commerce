@@ -3,7 +3,6 @@ import {
   Camera,
   CheckCircle2,
   ClipboardList,
-  Copy,
   DollarSign,
   Download,
   Factory,
@@ -367,71 +366,6 @@ ${listing}
 ${adScript}`
 }
 
-function encodeRtfText(value: string) {
-  return Array.from(value)
-    .map((char) => {
-      if (char === '\\') {
-        return '\\\\'
-      }
-
-      if (char === '{') {
-        return '\\{'
-      }
-
-      if (char === '}') {
-        return '\\}'
-      }
-
-      const codePoint = char.codePointAt(0) ?? 0
-
-      if (codePoint === 10) {
-        return '\\par '
-      }
-
-      if (codePoint < 128) {
-        return char
-      }
-
-      if (codePoint <= 65535) {
-        const signedCodePoint = codePoint > 32767 ? codePoint - 65536 : codePoint
-        return `\\u${signedCodePoint}?`
-      }
-
-      return '?'
-    })
-    .join('')
-}
-
-function createWordRtf(content: string) {
-  const lines = content.split('\n')
-  const body = lines
-    .map((line) => {
-      const trimmed = line.trim()
-
-      if (!trimmed) {
-        return '\\par'
-      }
-
-      const isHeading =
-        trimmed.includes('、') ||
-        trimmed === '跨境电商 AI 运营报告' ||
-        trimmed.endsWith('素材')
-
-      if (isHeading) {
-        return `\\pard\\sa140\\b ${encodeRtfText(trimmed)}\\b0\\par`
-      }
-
-      return `\\pard\\sa80 ${encodeRtfText(trimmed)}\\par`
-    })
-    .join('\n')
-
-  return `{\\rtf1\\ansi\\deff0
-{\\fonttbl{\\f0 Arial;}}
-\\f0\\fs24
-${body}
-}`
-}
-
 function createDocxParagraphs(content: string, docx: DocxModule) {
   const { HeadingLevel, Paragraph, TextRun } = docx
 
@@ -615,36 +549,10 @@ function App() {
       downloadBlob(blob, fileName)
       setExportStatus(`DOCX 文件已生成：${fileName}。如果浏览器没有自动下载，请点下面的手动下载链接。`)
     } catch (error) {
-      setExportStatus('DOCX 导出失败。请使用“备用 RTF”或“复制报告”。')
+      setExportStatus('DOCX 导出失败。请使用“打印版”作为兜底。')
       console.error('DOCX export failed', error)
     } finally {
       setIsExporting(false)
-    }
-  }
-
-  function exportRtf() {
-    const fileName = `${sanitizeFileName(form.productName) || 'ecommerce-report'}-运营报告-备用.rtf`
-    setExportStatus('正在准备 RTF 备用文件...')
-
-    try {
-      const rtf = createWordRtf(fullReportText)
-      const blob = new Blob([rtf], { type: 'application/rtf;charset=utf-8' })
-      setManualDownloadBlob(blob, fileName, '手动下载 RTF 备用文件')
-      downloadBlob(blob, fileName)
-      setExportStatus(`RTF 备用文件已生成：${fileName}。Word 和 WPS 都可以打开。`)
-    } catch (error) {
-      setExportStatus('RTF 备用导出失败。请使用“复制报告”。')
-      console.error('RTF export failed', error)
-    }
-  }
-
-  async function copyReport() {
-    try {
-      await navigator.clipboard.writeText(fullReportText)
-      setExportStatus('报告正文已复制。可以直接粘贴到 Word、WPS 或飞书文档。')
-    } catch (error) {
-      setExportStatus('复制失败。请手动选中页面内容复制。')
-      console.error('Copy report failed', error)
     }
   }
 
@@ -657,7 +565,7 @@ function App() {
     const printWindow = window.open('', '_blank')
 
     if (!printWindow) {
-      setExportStatus('打印窗口被浏览器拦截。请允许弹窗，或使用 DOCX/RTF 下载。')
+      setExportStatus('打印窗口被浏览器拦截。请允许弹窗，或使用 DOCX 下载。')
       return
     }
 
@@ -700,14 +608,6 @@ function App() {
           <button type="button" className="primary-button" onClick={exportDocx} disabled={isExporting}>
             <Download size={18} />
             {isExporting ? '导出中...' : '导出 DOCX'}
-          </button>
-          <button type="button" className="secondary-button" onClick={exportRtf}>
-            <FileText size={18} />
-            备用 RTF
-          </button>
-          <button type="button" className="secondary-button" onClick={copyReport}>
-            <Copy size={18} />
-            复制报告
           </button>
           <button type="button" className="secondary-button" onClick={openPrintView}>
             <Printer size={18} />

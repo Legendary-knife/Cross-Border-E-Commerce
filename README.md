@@ -14,7 +14,7 @@ AI prototype for a cross-border ecommerce MVP focused on:
 - First platforms: Amazon and TikTok Shop
 - First target market: United States
 - Input priority: link parsing first, manual pasted facts as fallback
-- Export format: real `.docx`, with `.rtf`, copy, and print fallbacks
+- Export format: real `.docx`, with manual download and print fallback
 - Account model: single-user version first
 
 ## Product Flow
@@ -25,7 +25,7 @@ AI prototype for a cross-border ecommerce MVP focused on:
 4. Generate a Chinese operation report.
 5. Review visual KPIs, skill orchestration results, competitor insights, action items, and English assets.
 6. Export the full report as a `.docx` file when needed.
-7. If browser download is blocked, use the manual link, RTF fallback, copy action, or printable view.
+7. If browser download is blocked, use the manual link or printable view.
 
 ## Local Development
 
@@ -63,10 +63,8 @@ These modules are currently simulated in the browser. They define the UX, fields
 
 Click `Export DOCX` to save the full Chinese operation report as a real `.docx` file. The DOCX generator is lazy-loaded only when the user exports, keeping the initial app lighter.
 
-After every export attempt, the page also creates a manual download link under the export status message. If the browser blocks or hides the automatic download, use one of the fallback actions:
+After every export attempt, the page also creates a manual download link under the export status message. If the browser blocks or hides the automatic download, use the manual link or open the printable view.
 
-- `备用 RTF`: exports a Word-readable `.rtf` file
-- `复制报告`: copies the full report text to the clipboard
 - `打印版`: opens a clean printable report view
 
 Backend work expected after prototype validation:
