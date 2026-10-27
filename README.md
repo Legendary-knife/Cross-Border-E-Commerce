@@ -8,6 +8,7 @@ AI prototype for a cross-border ecommerce MVP focused on:
 - skill-orchestrated opportunity scoring
 - cost, exchange-rate, and margin simulation
 - image, sourcing, and service-provider readiness checks
+- demo presets, local draft autosave, and input readiness checks
 
 ## MVP Decisions
 
@@ -26,6 +27,8 @@ AI prototype for a cross-border ecommerce MVP focused on:
 5. Review visual KPIs, skill orchestration results, competitor insights, action items, and English assets.
 6. Export the full report as a `.docx` file when needed.
 7. If browser download is blocked, use the manual link, copy action, or printable view.
+
+For demos, use the built-in sample products in the left panel. The app also autosaves the latest draft to local browser storage, so refreshing the page will keep the current inputs.
 
 ## Local Development
 

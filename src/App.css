@@ -121,6 +121,8 @@ button {
 .input-panel,
 .report-panel,
 .step-card,
+.demo-card,
+.checklist-card,
 .report-card,
 .kpi-grid article,
 .risk-note {
@@ -175,6 +177,116 @@ button {
   gap: 12px;
   padding: 14px;
   box-shadow: none;
+}
+
+.demo-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  box-shadow: none;
+  background: #f7fcfb;
+}
+
+.demo-card h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.preset-list {
+  display: grid;
+  gap: 8px;
+}
+
+.preset-list button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 11px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #17211f;
+  border: 1px solid #d5dedb;
+  text-align: left;
+}
+
+.preset-list button:hover {
+  border-color: #99d4ca;
+  background: #f0fdfa;
+}
+
+.preset-list strong {
+  color: #0f766e;
+  font-size: 14px;
+}
+
+.preset-list span {
+  color: #64706e;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.text-button {
+  justify-self: start;
+  padding: 0;
+  background: transparent;
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.checklist-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  box-shadow: none;
+}
+
+.checklist-card > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.checklist-card strong {
+  color: #17211f;
+  font-size: 14px;
+}
+
+.checklist-card span {
+  color: #0f766e;
+  font-size: 18px;
+  font-weight: 820;
+}
+
+.checklist-card ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklist-card li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.checklist-card li svg {
+  color: #cbd5e1;
+}
+
+.checklist-card li.done {
+  color: #0f766e;
+}
+
+.checklist-card li.done svg {
+  color: #0f766e;
 }
 
 .step-card > span {

@@ -17,6 +17,7 @@ import {
   Sparkles,
   Truck,
   Printer,
+  Wand2,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
@@ -65,6 +66,19 @@ type WindowWithFilePicker = Window &
     showSaveFilePicker?: (options: FileSavePickerOptions) => Promise<WritableFileHandle>
   }
 
+type SavedDraft = {
+  form: FormState
+  platforms: Platform[]
+}
+
+type DemoPreset = {
+  id: string
+  name: string
+  description: string
+  form: FormState
+  platforms: Platform[]
+}
+
 type SkillModule = {
   name: string
   role: string
@@ -72,6 +86,8 @@ type SkillModule = {
   status: '已纳入' | '待接入'
   icon: typeof Search
 }
+
+const DRAFT_STORAGE_KEY = 'cross-border-ecommerce-draft'
 
 const defaultForm: FormState = {
   productName: 'Cordless portable blender',
@@ -87,6 +103,134 @@ const defaultForm: FormState = {
   shippingUsd: '4.8',
   adCostUsd: '5.2',
   exchangeRate: '7.12',
+}
+
+const demoPresets: DemoPreset[] = [
+  {
+    id: 'portable-blender',
+    name: '便携榨汁杯',
+    description: '适合演示 Amazon + TikTok Shop 双平台机会判断。',
+    form: defaultForm,
+    platforms: ['Amazon', 'TikTok Shop'],
+  },
+  {
+    id: 'pet-grooming-brush',
+    name: '宠物除毛刷',
+    description: '适合演示高频内容营销、痛点文案和广告脚本生成。',
+    form: {
+      productName: 'Self-cleaning pet grooming brush',
+      category: 'Pet Supplies',
+      productUrl: 'https://www.amazon.com/dp/example-pet-brush',
+      competitorUrls:
+        'https://www.amazon.com/dp/competitor-pet-a\nhttps://shop.tiktok.com/view/product/pet-brush-example',
+      sellingPoints:
+        'Self-cleaning button, gentle stainless steel pins, ergonomic handle, suitable for cats and dogs, reduces loose fur',
+      tone: 'Problem solution',
+      salePriceUsd: '19.9',
+      sourceCostCny: '26',
+      shippingUsd: '2.6',
+      adCostUsd: '3.8',
+      exchangeRate: '7.12',
+    },
+    platforms: ['Amazon', 'TikTok Shop'],
+  },
+  {
+    id: 'travel-organizer',
+    name: '旅行收纳包',
+    description: '适合演示利润测算、Listing 和图片检查清单。',
+    form: {
+      productName: 'Compression travel packing cubes',
+      category: 'Travel Accessories',
+      productUrl: 'https://www.amazon.com/dp/example-packing-cubes',
+      competitorUrls:
+        'https://www.amazon.com/dp/competitor-travel-a\nhttps://www.amazon.com/dp/competitor-travel-b',
+      sellingPoints:
+        'Compression zipper, lightweight fabric, suitcase organization, multiple sizes, water-resistant material',
+      tone: 'Premium practical',
+      salePriceUsd: '29.9',
+      sourceCostCny: '42',
+      shippingUsd: '3.4',
+      adCostUsd: '4.5',
+      exchangeRate: '7.12',
+    },
+    platforms: ['Amazon'],
+  },
+]
+
+function isPlatform(value: unknown): value is Platform {
+  return value === 'Amazon' || value === 'TikTok Shop'
+}
+
+function isFormState(value: unknown): value is FormState {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Record<keyof FormState, unknown>
+  const requiredFields: Array<keyof FormState> = [
+    'productName',
+    'category',
+    'productUrl',
+    'competitorUrls',
+    'sellingPoints',
+    'tone',
+    'salePriceUsd',
+    'sourceCostCny',
+    'shippingUsd',
+    'adCostUsd',
+    'exchangeRate',
+  ]
+
+  return requiredFields.every((field) => typeof candidate[field] === 'string')
+}
+
+function loadSavedDraft(): SavedDraft {
+  if (typeof window === 'undefined') {
+    return {
+      form: defaultForm,
+      platforms: ['Amazon', 'TikTok Shop'],
+    }
+  }
+
+  try {
+    const rawDraft = window.localStorage.getItem(DRAFT_STORAGE_KEY)
+
+    if (!rawDraft) {
+      return {
+        form: defaultForm,
+        platforms: ['Amazon', 'TikTok Shop'],
+      }
+    }
+
+    const parsed = JSON.parse(rawDraft) as Partial<SavedDraft>
+    const savedPlatforms = Array.isArray(parsed.platforms)
+      ? parsed.platforms.filter(isPlatform)
+      : []
+
+    return {
+      form: isFormState(parsed.form) ? parsed.form : defaultForm,
+      platforms: savedPlatforms.length > 0 ? savedPlatforms : ['Amazon', 'TikTok Shop'],
+    }
+  } catch {
+    return {
+      form: defaultForm,
+      platforms: ['Amazon', 'TikTok Shop'],
+    }
+  }
+}
+
+function saveDraft(form: FormState, platforms: Platform[]) {
+  try {
+    window.localStorage.setItem(
+      DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        form,
+        platforms,
+      }),
+    )
+  } catch (error) {
+    console.warn('Save draft failed', error)
+  }
 }
 
 const skillModules: SkillModule[] = [
@@ -523,12 +667,14 @@ async function saveDocxBlob(blob: Blob, fileName: string) {
 }
 
 function App() {
-  const [form, setForm] = useState<FormState>(defaultForm)
-  const [platforms, setPlatforms] = useState<Platform[]>(['Amazon', 'TikTok Shop'])
+  const [initialDraft] = useState(loadSavedDraft)
+  const [form, setForm] = useState<FormState>(initialDraft.form)
+  const [platforms, setPlatforms] = useState<Platform[]>(initialDraft.platforms)
   const [generatedAt, setGeneratedAt] = useState('报告已就绪')
   const [isExporting, setIsExporting] = useState(false)
   const [exportStatus, setExportStatus] = useState('点击“导出 DOCX”保存完整中文运营报告。')
   const [manualDownload, setManualDownload] = useState<ManualDownload | null>(null)
+  const [draftStatus, setDraftStatus] = useState('草稿已载入')
 
   const competitors = useMemo(
     () => splitCompetitors(form.competitorUrls),
@@ -552,6 +698,35 @@ function App() {
       (form.sellingPoints ? 15 : 0) +
       (parseMoney(form.salePriceUsd) ? 10 : 0),
   )
+  const inputChecklist = useMemo(
+    () => [
+      {
+        label: '商品名称',
+        done: Boolean(form.productName.trim()),
+      },
+      {
+        label: '商品链接',
+        done: Boolean(form.productUrl.trim()),
+      },
+      {
+        label: '竞品链接',
+        done: competitors.length > 0,
+      },
+      {
+        label: '商品卖点',
+        done: Boolean(form.sellingPoints.trim()),
+      },
+      {
+        label: '利润字段',
+        done:
+          parseMoney(form.salePriceUsd) > 0 &&
+          parseMoney(form.sourceCostCny) > 0 &&
+          parseMoney(form.shippingUsd) >= 0 &&
+          parseMoney(form.adCostUsd) >= 0,
+      },
+    ],
+    [competitors.length, form],
+  )
 
   useEffect(() => {
     return () => {
@@ -560,6 +735,10 @@ function App() {
       }
     }
   }, [manualDownload])
+
+  useEffect(() => {
+    saveDraft(form, platforms)
+  }, [form, platforms])
 
   function setManualDownloadBlob(blob: Blob, fileName: string, label: string) {
     setManualDownload((current) => {
@@ -577,6 +756,7 @@ function App() {
 
   function updateForm(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }))
+    setDraftStatus('草稿已自动保存')
   }
 
   function togglePlatform(platform: Platform) {
@@ -587,10 +767,27 @@ function App() {
 
       return [...current, platform]
     })
+    setDraftStatus('草稿已自动保存')
   }
 
   function generateReport() {
     setGeneratedAt(`生成于 ${new Date().toLocaleTimeString()}`)
+  }
+
+  function loadPreset(preset: DemoPreset) {
+    setForm(preset.form)
+    setPlatforms(preset.platforms)
+    setGeneratedAt(`已加载演示样例：${preset.name}`)
+    setExportStatus('样例已加载，可以直接演示报告、复制或导出 DOCX。')
+    setDraftStatus(`已加载样例：${preset.name}`)
+  }
+
+  function resetDraft() {
+    setForm(defaultForm)
+    setPlatforms(['Amazon', 'TikTok Shop'])
+    setGeneratedAt('已重置为默认演示数据')
+    setExportStatus('默认演示数据已恢复。')
+    setDraftStatus('已重置为默认演示数据')
   }
 
   async function exportDocx() {
@@ -708,6 +905,42 @@ function App() {
               <h2>输入区</h2>
               <p>先填商品、链接和利润假设，右侧报告会同步更新。</p>
             </div>
+          </div>
+
+          <div className="demo-card">
+            <div className="card-heading">
+              <Wand2 size={18} />
+              <div>
+                <h3>演示样例</h3>
+                <p>{draftStatus}</p>
+              </div>
+            </div>
+            <div className="preset-list">
+              {demoPresets.map((preset) => (
+                <button key={preset.id} type="button" onClick={() => loadPreset(preset)}>
+                  <strong>{preset.name}</strong>
+                  <span>{preset.description}</span>
+                </button>
+              ))}
+            </div>
+            <button type="button" className="text-button" onClick={resetDraft}>
+              重置为默认演示数据
+            </button>
+          </div>
+
+          <div className="checklist-card">
+            <div>
+              <strong>输入完整度</strong>
+              <span>{readinessScore}%</span>
+            </div>
+            <ul>
+              {inputChecklist.map((item) => (
+                <li key={item.label} className={item.done ? 'done' : ''}>
+                  <CheckCircle2 size={15} />
+                  {item.label}
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="step-card">
